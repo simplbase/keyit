@@ -1,0 +1,26 @@
+services:
+  keyit-relay:
+    image: ${KEYIT_RELAY_IMAGE:?set KEYIT_RELAY_IMAGE}
+    container_name: keyit-relay
+    restart: unless-stopped
+    env_file: ${KEYIT_RELAY_ENV_FILE:-.env}
+    volumes:
+      - ./data/relay:/data/relay
+    expose:
+      - "8787"
+    networks:
+      - proxy
+      - keyit-private
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/readyz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy:
+    external: true
+    name: ${SIMPLBASE_PROXY_NETWORK:-proxy}
+  keyit-private:
+    internal: true

@@ -1,0 +1,42 @@
+[package]
+name = "keyit-protocol"
+description = "Core protocol and domain definitions for Keyit."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+# Exposes the crate's `new_unchecked_for_test` placeholder constructors
+# (identifiers, signature/hash/key/nonce bytes) to other crates' tests.
+# Off by default: these constructors skip validation and are only for
+# isolated test setup.
+test-util = []
+
+[dependencies]
+# AES-256-GCM for authenticated encryption of normalized environment
+# payloads and wrapped environment DEKs.
+aes-gcm = "0.10"
+# SHA-256 for identifier derivation and protocol hashes.
+sha2 = "0.10"
+# Lowercase RFC 4648 base32 (no padding) for identifier bodies. Used only
+# for its base32 codec; avoids hand-rolling bit-packing/unpacking.
+data-encoding = "2"
+# Ed25519 signing/verification for protocol records.
+ed25519-dalek = "3"
+# Fills raw OS-random bytes for `signing::SigningKeyPair::generate`.
+getrandom = "0.4"
+# HKDF-SHA256 derives AEAD wrapping keys from X25519 shared secrets and
+# explicit Keyit context bytes.
+hkdf = "0.12"
+# X25519 key agreement for device encryption identities and environment
+# DEK wrapping. StaticSecret is enabled so callers can persist/reload the
+# local device key material outside `.keyit/`.
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+# Safely zeroes the transient stack buffer `SigningKeyPair::generate`
+# fills with random secret key bytes.
+zeroize = "1"

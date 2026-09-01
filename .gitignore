@@ -1,0 +1,21 @@
+# Build artifacts
+/target/
+**/target/
+
+# Environment files — Keyit exists to sync these; they must never be
+# committed to the repository that implements Keyit itself.
+.env
+.env.*
+!.env.example
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+
+# Local override configuration
+.direnv/

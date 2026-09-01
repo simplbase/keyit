@@ -1,0 +1,222 @@
+---
+title: Quickstart
+description: Create a Keyit project, push an encrypted environment, and pull it back — using the real, current CLI.
+---
+
+<Available>every command below is real — verified against `keyit-cli/src/main.rs`, not the protocol design</Available>
+
+This walks through Keyit on a single machine: creating a project,
+registering an environment, and pushing/pulling an encrypted revision.
+Adding a second developer's device is a separate flow, covered by the
+`invite create` / `join` / `approve` entries in the
+[CLI reference](/docs/reference/cli) — come back to that once you've
+done this once.
+
+## Before you start: pick an identity mode
+
+Every device gets one persistent Keyit identity (an Ed25519 signing key
+and an X25519 key-agreement key), generated the first time you run a
+command that needs one and reused after that. On macOS, Keyit prefers
+to store that identity in the system Keychain; on other platforms (and
+if you opt out) it falls back to a restricted local file.
+
+If you just want to try Keyit without touching your real device
+identity, isolate this walkthrough into a temporary directory and force
+the file-based key store:
+
+```bash
+export KEYIT_KEY_STORE=file
+export KEYIT_DATA_DIR="$(mktemp -d)"
+mkdir -p /tmp/keyit-quickstart && cd /tmp/keyit-quickstart
+```
+
+Skip this block to use your normal device identity in your actual
+project directory instead — both are the same commands from here.
+
+## 1. Initialize a project
+
+```bash
+keyit init --project-label quickstart-demo
+```
+
+```text
+Initialized Keyit project kvp_9f2a1c4e... in .keyit
+  project label:      quickstart-demo
+  default relay URL:  https://relay.keyit.sh
+  creator device:     kvd_3b7e0a12...
+  device signing key: ~/.local/share/keyit/device-signing.key (reused if it already existed; never stored in .keyit/)
+  device encryption key: ~/.local/share/keyit/device-encryption.key (reused if it already existed; never stored in .keyit/)
+```
+
+This creates `.keyit/` with a signed project genesis and makes this
+device the project's first Owner. It does **not** read any `.env`
+file, create an environment, or contact a relay — that's all separate
+and explicit.
+
+## 2. Register an environment
+
+```bash
+keyit env add development .env.local
+```
+
+```text
+Added Keyit environment development (kve_71cd0f88...)
+  project:    kvp_9f2a1c4e...
+  local path: .env.local
+  metadata:   .keyit/environments/kve_71cd0f88...
+```
+
+This records that the `development` environment maps to `.env.local`
+on this device. It still doesn't read the file or publish anything.
+
+## 3. Add environment state
+
+Create the mapped file with a couple of fake values:
+
+```bash
+printf 'API_KEY=demo-token\nLOG_LEVEL=debug\n' > .env.local
+```
+
+```bash
+keyit status
+```
+
+```text
+Project kvp_9f2a1c4e...
+
+Environment development (kve_71cd0f88...)
+  local path: .env.local
+  latest:     none
+  local base: none
+  state:      local file present, 2 keys parsed
+```
+
+`latest: none` means nothing has been pushed yet — `status` only
+reports metadata and key *counts*, never values.
+
+## 4. Push
+
+```bash
+keyit push development --summary "Initial development env"
+```
+
+```text
+Created local encrypted revision kvr_44a0e9d1... for development (kve_71cd0f88...)
+  project:  kvp_9f2a1c4e...
+  keys:     2
+  revision: .keyit/environments/kve_71cd0f88.../revisions/kvr_44a0e9d1....toml
+  payload:  .keyit/environments/kve_71cd0f88.../payloads/kvr_44a0e9d1....bin
+```
+
+This parses and normalizes `.env.local`, encrypts it with the
+environment's data encryption key, and writes a signed revision
+locally — then publishes it to whichever relay the project is
+configured for.
+
+<Callout title="This step reaches the network" type="warn">
+  This step is **not** local-only by default. `keyit init` recorded
+  `https://relay.keyit.sh` as this project's relay in `keyit.toml`
+  (that's what `default relay URL: https://relay.keyit.sh` in step 1's
+  output meant), and `keyit push`/`keyit pull` use that project default
+  whenever you don't pass `--relay-url`/`--relay-dir` yourself — they
+  don't require a flag to reach the network, only to *override where*.
+  So this exact command really does publish the encrypted revision to
+  the public hosted relay. That's fine here (fake values, a disposable
+  project), but if you're trying Keyit against a real project, either
+  isolate the walkthrough as shown above, or run `keyit init --relay-url
+  file://some-local-dir` (any non-`http(s)` URL keeps everything local)
+  before you push anything real. See the `keyit push` entry in the
+  [CLI reference](/docs/reference/cli) for the full publish behavior.
+</Callout>
+
+Confirm there's nothing left to push:
+
+```bash
+keyit diff
+```
+
+```text
+Project kvp_9f2a1c4e...
+
+Environment development (kve_71cd0f88...)
+  local path: .env.local
+  baseline:   kvr_44a0e9d1...
+  diff:       no keys
+```
+
+## 5. Inspect
+
+```bash
+keyit whoami
+```
+
+```text
+Project quickstart-demo (kvp_9f2a1c4e...)
+Device kvd_3b7e0a12...
+  active member:          yes
+  accessible environments: 1
+  signing public key:     3f9a...
+  encryption public key:  7c21...
+  signing key ref:        ~/.local/share/keyit/device-signing.key
+  encryption key ref:     ~/.local/share/keyit/device-encryption.key
+```
+
+```bash
+keyit revision list development
+```
+
+```text
+Revisions for development (kve_71cd0f88...) in project kvp_9f2a1c4e...
+
+Revision kvr_44a0e9d1...
+  parent:     none
+  author:     kvd_3b7e0a12...
+  created at: 1755999999
+  summary:    Initial development env
+```
+
+## 6. Pull
+
+```bash
+keyit pull development
+```
+
+<Callout title="Expect this error on the device you pushed from">
+  On the *same* device you just pushed from, this can fail with:
+
+  ```text
+  error: pull would overwrite local changes at ".env.local"; rerun with --force to replace the file
+  ```
+
+  This happens because `.env.local` was written by hand in step 3, not
+  by a previous `keyit pull` — Keyit only recognizes a local file as
+  "materialized" once it has written it itself, so it refuses to
+  silently overwrite content it doesn't have provenance for. In this
+  specific case the content already matches what you pushed, so
+  `keyit pull development --force` is safe. On a *second* device that
+  never had this file, plain `keyit pull development` works without
+  `--force`.
+</Callout>
+
+## What you've verified
+
+Everything above ran against the default hosted relay
+(`https://relay.keyit.sh`) except where a step's output says
+otherwise — see the callout in step 4. Keyit only skips the network
+entirely when the project's configured relay URL isn't an `http(s)`
+one (or when you pass `--relay-dir` for a filesystem-backed relay used
+in tests). To check that the default hosted relay is reachable before
+pushing somewhere your team can pull from, run:
+
+```bash
+keyit relay check
+```
+
+## Next
+
+- Bring in a second developer: see `keyit invite create` / `keyit join` /
+  `keyit approve` in the [CLI reference](/docs/reference/cli)
+- Understand what just happened underneath these commands:
+  [Core Concepts](/docs/concepts)
+- Read what Keyit protects against, and what it doesn't:
+  [Security Model](/docs/security)

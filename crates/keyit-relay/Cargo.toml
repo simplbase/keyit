@@ -1,0 +1,31 @@
+[package]
+name = "keyit-relay"
+description = "Keyit Relay: untrusted storage and distribution for encrypted Keyit state."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "keyit-relay"
+path = "src/main.rs"
+
+[lib]
+name = "keyit_relay"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+keyit-protocol = { path = "../keyit-protocol" }
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+data-encoding = "2"
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+
+[dev-dependencies]
+keyit-protocol = { path = "../keyit-protocol", features = ["test-util"] }
+tempfile = "3"

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+*.rs text diff=rust
+Cargo.lock text -diff

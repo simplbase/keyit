@@ -1,0 +1,13 @@
+.git
+.github
+target
+**/target
+.DS_Store
+.direnv
+.env
+.env.*
+!.env.example
+docs
+packaging
+scripts
+*.md

@@ -1,0 +1,100 @@
+---
+title: Installation
+description: Install the keyit and keyit-relay binaries via Homebrew, a Linux install script, Windows, or from source.
+---
+
+<Available>every method on this page installs the real, current release binaries</Available>
+
+Keyit ships two binaries: `keyit`, the developer-facing CLI, and
+`keyit-relay`, the relay service (only needed if you're self-hosting a
+relay — most developers only need `keyit`).
+
+## Homebrew
+
+On macOS or Linux with Homebrew:
+
+```bash
+brew tap simplbase/tap
+brew install keyit
+```
+
+This installs both `keyit` and `keyit-relay`.
+
+## Ubuntu and other Linux distributions
+
+For a user-local install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/install-release.sh | sh
+```
+
+This installs to `$HOME/.local/bin/keyit` and
+`$HOME/.local/bin/keyit-relay`. Make sure `$HOME/.local/bin` is on
+`PATH`.
+
+For a system-wide install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/install-release.sh \
+  | sudo env PREFIX=/usr/local sh
+```
+
+Install to a custom prefix, or pin a specific version, with environment
+variables:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/install-release.sh | PREFIX=/usr/local sh
+curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/install-release.sh | KEYIT_VERSION=v1.0.0 sh
+```
+
+The installer downloads the matching GitHub Release archive, verifies
+it against `SHA256SUMS`, and installs both binaries.
+
+## Windows
+
+Download the Windows ZIP archive from the GitHub Releases page, verify
+it against `SHA256SUMS`, and place `keyit.exe` (and `keyit-relay.exe`,
+if you're operating a relay) somewhere on `PATH`.
+
+## Build from source
+
+Use this if you're working from a checkout, or need a build that
+hasn't been released yet:
+
+```bash
+PREFIX="$HOME/.local" ./packaging/install.sh
+```
+
+This builds the workspace with the locked dependency graph
+(`Cargo.lock`) and installs `$PREFIX/bin/keyit` and
+`$PREFIX/bin/keyit-relay`.
+
+## Verify it worked
+
+```bash
+keyit version
+```
+
+## Shell completions
+
+```bash
+keyit completions zsh > ~/.zsh/completions/_keyit
+keyit-relay completions zsh > ~/.zsh/completions/_keyit-relay
+```
+
+Supported shell names come from [Clap](https://docs.rs/clap) and
+include `bash`, `zsh`, `fish`, `powershell`, and `elvish`.
+
+## Relay operators
+
+Everything above installs `keyit-relay`, but most developers never run
+it directly — projects default to the hosted relay at
+`https://relay.keyit.sh`. If you're standing up your own relay
+(self-hosting is a deliberate design goal, not an afterthought — the
+relay never needs to see plaintext), the container deployment and
+production-operation guides cover that separately from this page.
+
+## Next
+
+Continue to the [Quickstart](/docs/getting-started/quickstart) to
+create your first project.

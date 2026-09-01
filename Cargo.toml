@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/keyit-cli",
+    "crates/keyit-protocol",
+    "crates/keyit-relay",
+]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.95"
+license = "Apache-2.0"
+
+# Shared lint configuration for every crate in the workspace. Individual
+# crates opt in with `[lints] workspace = true`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

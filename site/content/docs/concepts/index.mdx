@@ -1,0 +1,74 @@
+---
+title: Core Concepts
+description: The seven ideas Keyit is built from, and how they fit together.
+---
+
+Keyit's frozen v1 protocol spec describes a single "conceptual spine"
+that every operation moves through. The seven concept pages in this
+section follow that same order, because each one depends on the ones
+before it:
+
+```text
+Device Identity
+   |
+   v
+Projects (Project Genesis)
+   |
+   v
+Environments (Environment Model)
+   |
+   v
+Encryption Model (Key Model)
+   |
+   v
+Members & Roles (Membership / Access)
+   |
+   v
+Revisions (Revision Chain)
+   |
+   v
+Relay (Relay Contract)
+```
+
+## The one-paragraph version
+
+A **device identity** is generated
+locally and never leaves the machine that created it — there are no
+Keyit user accounts. Running `keyit init` turns a repository into a
+**project**: a cryptographic boundary,
+identified by a genesis record, not by its folder name or Git remote.
+A project holds one or more **environments**
+— `development`, `staging`, `production`, or any label you choose —
+and each one is an independent boundary with its own encryption key,
+its own access list, and its own history.
+
+That independence is enforced by the **encryption
+model**: every environment gets its
+own random data encryption key, and that key is individually wrapped
+for each device authorized to read it — never stored anywhere in
+plaintext, including on the relay. Who gets to authorize a device, and
+what they can do once authorized, is governed by
+**members & roles**: Owner, Admin, or
+Member. Every change to an environment is recorded as a
+**revision** — a signed, append-only entry
+in that environment's own history, never a silent overwrite. And the
+**relay** that carries all of this between
+devices is deliberately untrusted: it stores and distributes encrypted
+material, but the protocol is designed so it never needs — and never
+receives — the keys required to read it.
+
+## Why this order
+
+Members & Roles comes *after* the Encryption Model on this site.
+Approving a device is, mechanically, the act of wrapping an
+environment's encryption key for that device's public key — that only
+makes sense once you know environments have keys in the first place.
+The frozen protocol spec (`docs/protocol/keyit-protocol-v1.md`) defines
+the Key Model before Invite/Join/Approval for the same reason.
+
+## Terminology note
+
+Roles are **Owner**, **Admin**, and **Member** — confirmed against the
+`Role` enum in `keyit-protocol` and the `--role` flag on `keyit
+approve`. Either an Owner or an Admin can approve a joining device;
+approval is not restricted to the Owner alone.

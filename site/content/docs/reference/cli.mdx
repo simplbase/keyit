@@ -1,0 +1,85 @@
+---
+title: CLI Overview
+description: Every command the keyit CLI implements today, verified against keyit-cli/src/main.rs.
+---
+
+<Available>this entire table is transcribed from the `clap` command definitions in `keyit-cli/src/main.rs` — every flag shown is real</Available>
+
+This page lists what `keyit` actually implements. If a capability from
+the protocol spec isn't here, it isn't shipped yet — see the
+<ProtocolDefined /> notes at the bottom of this page rather than
+assuming a command exists.
+
+## Project setup
+
+| Command | Description |
+| --- | --- |
+| `keyit init [--project-label <label>] [--relay-url <url>] [--force]` | Creates `.keyit/` with a signed project genesis and this device's Owner membership. Doesn't touch `.env` files, encrypt anything, or contact a relay. `--force` overwrites existing Keyit metadata in the current directory. |
+| `keyit env add <label> <local-path>` | Registers an environment and its local dotenv mapping. Doesn't read the file yet. |
+| `keyit env list` | Lists configured environments and their local/latest revision pointers. |
+
+## Inspection
+
+| Command | Description |
+| --- | --- |
+| `keyit whoami` | This device's identity, membership status, and public keys. |
+| `keyit status [environment]` | Local environment state: mapped path, latest known revision, and whether the local file is present, missing, or unparseable. |
+| `keyit diff [environment]` | Which keys changed locally since the last known revision — key names only, never values. |
+| `keyit revision list <environment>` | Local encrypted revision history for one environment. |
+
+## Synchronization
+
+| Command | Description |
+| --- | --- |
+| `keyit push <environment> [--summary <text>] [--relay-dir <path>] [--relay-url <url>]` | Encrypts the mapped local file, creates a new signed revision, and publishes it to the project's configured relay — the project's `keyit.toml` (defaulting to `https://relay.keyit.sh` unless `keyit init --relay-url` overrode it), or the value of `--relay-dir`/`--relay-url` on this command when given. Publishing is skipped only when the resolved relay URL isn't `http(s)` (see [File Formats](/docs/reference/file-formats#local-only-projects)). `--summary` must not contain secret values. |
+| `keyit pull <environment> [--relay-dir <path>] [--relay-url <url>] [--force]` | Fetches from that same resolved relay, then verifies and materializes the latest revision this device is authorized for. Refuses to overwrite a local file with unrecognized changes unless `--force` is passed. |
+
+## Team access
+
+| Command | Description |
+| --- | --- |
+| `keyit invite create --env <label> --expires-at <unix-ts> [--max-uses <n>] [--relay-url <url>]` | Creates a signed, environment-scoped invite. `--env` is repeatable for a multi-environment invite. `--expires-at` is required — there's no unlimited-lifetime invite. Note: there is **no `--role` flag here** — role is chosen at approval time, not invite time. |
+| `keyit join <invite-id-or-bundle-path> [--env <label>]... [--device-label <text>] [--relay-url <url>]` | Requests membership through an invite. Does not grant access by itself. |
+| `keyit approve <device-id> [--role owner\|admin\|member] [--relay-url <url>]` | Grants a pending device access and wraps the relevant environment keys for it. `--role` defaults to `member`. |
+| `keyit revoke <device-id> [--env <label>]... [--reason <text>] [--relay-url <url>]` | Removes a device's future access and flags the affected environments for key rotation on the next push. |
+
+## Relay and utility
+
+| Command | Description |
+| --- | --- |
+| `keyit relay check [--relay-url <url>]` | Checks `/healthz` and `/readyz` for a relay. Defaults to the hosted relay, `https://relay.keyit.sh`. |
+| `keyit completions <shell>` | Prints a shell completion script (`bash`, `zsh`, `fish`, `powershell`, `elvish`). |
+| `keyit version` | Prints the CLI version. |
+
+`keyit-relay` is a separate binary for relay operators — see the relay
+deployment docs rather than this page for its commands.
+
+## What isn't here yet
+
+<ProtocolDefined>
+  **Rollback.** The protocol spec's frozen rules describe rollback
+  ("creates a new revision; does not delete history"), but there is no
+  `keyit revision rollback` or equivalent command in the current CLI.
+</ProtocolDefined>
+
+<ProtocolDefined>
+  **Guided conflict resolution.** Conflict *detection* is fully
+  implemented (a stale push is rejected). There is no dedicated
+  resolve/merge command — today's flow is pull, edit the local dotenv
+  file by hand, push again.
+</ProtocolDefined>
+
+<ProtocolDefined>
+  **Member listing.** The protocol doc references a `keyit members`
+  command in passing; it does not exist in `keyit-cli`'s command tree
+  today. Use `keyit whoami` and `keyit env list` for what's currently
+  available.
+</ProtocolDefined>
+
+## Exit codes
+
+Every command returns one of two process exit codes: `0` on success,
+`1` on any failure (there's no differentiated exit-code scheme yet).
+Error messages are
+written to stderr, prefixed with `error: `, and are designed to be
+safe to paste into a bug report — they never include secret values.
