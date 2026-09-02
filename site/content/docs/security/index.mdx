@@ -12,14 +12,13 @@ description: What Keyit actually protects, the cryptography it uses, and what it
 
 ## What the relay never sees
 
-The single design constraint everything else follows from: the relay
-is untrusted infrastructure, not a trust anchor. It stores and
-distributes ciphertext, signed metadata, and wrapped keys — never a
-plaintext environment value, and never an unwrapped encryption key. A
-fully compromised relay can affect availability and can leak metadata
-(which devices exist, when a push happened, how many keys an
-environment has) — it cannot, if the client-side cryptography holds,
-read a single secret value.
+The relay is untrusted infrastructure, not a trust anchor. That is the
+point. It stores and distributes ciphertext, signed metadata, and
+wrapped keys — never a plaintext environment value, and never an
+unwrapped encryption key. A fully compromised relay can affect
+availability and can leak metadata: which devices exist, when a push
+happened, how many keys an environment has. If the client-side
+cryptography holds, it still cannot read a single secret value.
 
 ## The cryptography, specifically
 

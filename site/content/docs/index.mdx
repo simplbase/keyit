@@ -3,14 +3,14 @@ title: Introduction
 description: What Keyit is, what problem it solves, and what it deliberately isn't.
 ---
 
-Keyit is an open-source, local-first protocol and CLI for securely
-synchronizing private project state — starting with `.env`-style files —
-across a team's authorized developers and machines.
+Keyit is open-source, local-first encrypted `.env` sync for teams that
+have outgrown "send me your env file" but do not want a secrets
+manager account just to start working.
 
 Its core promise, unchanged since the v1 protocol spec:
 
 ```text
-Clone the project. Join Keyit. Pull the environment. Start developing.
+Clone the project. Join Keyit. Pull the environment. Ship the thing.
 ```
 
 <Available>the CLI, the protocol, and the hosted relay described on this page are all shipped today</Available>
@@ -20,10 +20,8 @@ Clone the project. Join Keyit. Pull the environment. Start developing.
 A team's private project state — API keys, database URLs, feature
 flags, anything that normally lives in `.env.local` — is encrypted on
 the developer's own machine, published as a signed revision through an
-untrusted relay, and decrypted only by other devices the project owner
-has explicitly approved. No plaintext secret value ever has to leave a
-device unencrypted, and the relay that carries it never holds the key
-that could decrypt it.
+untrusted relay, and decrypted only by devices the project owner has
+approved. The relay moves the package. It does not get the key.
 
 Concretely, that means a small set of explicit operations:
 
@@ -50,9 +48,9 @@ protocol design.
 - **Not a password manager.** There's no vault UI, no browser
   extension, no personal credential storage. Keyit moves one team's
   project-scoped environment files between machines.
-- **Not a hosted secrets-management SaaS.** The relay that carries
-  encrypted revisions is explicitly untrusted — it's a synchronization
-  point, not a place secrets are "kept." You can self-host it.
+- **Not a hosted secrets-management SaaS.** The relay is a
+  synchronization point, not the sacred place where secrets live. Use
+  the hosted relay to try Keyit. Run your own when the work matters.
 - **Not blockchain-based.** The signed, append-only revision chain
   exists for integrity, provenance, and history — the same reason a
   package registry or a Git repository signs commits. There's no

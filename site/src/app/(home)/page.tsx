@@ -20,17 +20,6 @@ import {
   TRY_LOCAL_URL,
 } from "@/lib/layout.shared";
 
-/**
- * Keyit homepage.
- *
- * Every command and output line below must stay verified against
- * `keyit-cli/src/main.rs` (the `run_*_command` functions and their
- * `println!` text) — not README examples, not the protocol spec's
- * prose. Where a section touches something the protocol defines but
- * the CLI doesn't yet implement (rollback, guided conflict resolution),
- * it says so with `<ProtocolDefined>` rather than implying it works.
- */
-
 const HERO_LINES: TerminalLine[] = [
   { type: "command", text: "keyit diff production" },
   { type: "output", text: "modified   STRIPE_WEBHOOK_SECRET" },
@@ -185,7 +174,6 @@ function RelayCard({
 export default function HomePage() {
   return (
     <main>
-      {/* 1. Hero — "Keyit" has to be unmistakable in the first viewport. */}
       <section className="border-t border-fd-border pt-14 pb-16 sm:pt-20 sm:pb-24">
         <div className="mx-auto grid w-full max-w-5xl gap-10 px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-8">
           <div>
@@ -193,12 +181,13 @@ export default function HomePage() {
               open-source · local-first · Apache-2.0
             </p>
             <h1 className="text-balance text-[2.3rem] font-semibold leading-[1.1] tracking-tight text-fd-foreground sm:text-[2.6rem] lg:text-[2.9rem]">
-              Keyit is encrypted <code className="text-fd-primary">.env</code> sync for teams.
+              Keyit is for teams done pasting <code className="text-fd-primary">.env</code>{" "}
+              files around.
             </h1>
             <p className="mt-5 max-w-xl text-[15.5px] leading-relaxed text-fd-muted-foreground sm:text-base">
-              No secrets manager account. No email invites. No vault to stand up. Each device
-              signs and encrypts locally, and the relay in the middle only ever moves ciphertext
-              it can&apos;t read.
+              Encrypted project state sync without a secrets-manager account, dashboard ceremony,
+              or shared private key. Each device signs and encrypts locally; the relay only moves
+              ciphertext it cannot read.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <CTALink href="/docs/getting-started/installation">Install</CTALink>
@@ -217,26 +206,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Hosted relay or your own */}
       <Section id="relay">
         <SectionHeader
           id="relay-heading"
           index="01"
           eyebrow="Hosted or self-hosted"
-          title="Use the hosted relay to try Keyit fast. Run your own when the secrets are real."
-          dek="Either way the trust model doesn't change: the relay stores and forwards signed, encrypted revisions. It has no key that can open them, so there's nothing sensitive for it to leak even if it's fully compromised."
+          title="Use the hosted relay for the first five minutes. Run your own when a client would care."
+          dek="The trust model stays the same either way: the relay stores and forwards signed, encrypted revisions. It has no key that can open them. It is transport, not a vault."
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <RelayCard
             eyebrow="Default"
             title="Hosted — relay.keyit.sh"
-            body="Zero setup. No signup. keyit init works immediately against it. A reasonable default for trying Keyit and for lower-stakes projects."
+            body="Zero setup. No signup. keyit init works immediately against it. Use it to try Keyit, unblock a small team, or prove the workflow before you operate anything yourself."
             links={[]}
           />
           <RelayCard
             eyebrow="Your infrastructure"
             title="Self-hosted"
-            body="Run the same keyit-relay binary or container yourself — the right call for client work, production secrets, or a compliance requirement the hosted relay can't satisfy. The source is right here."
+            body="Run the same keyit-relay binary or container yourself when this touches client work, production secrets, or policy. The source is here; there is no hidden hosted-only protocol."
             links={[
               { label: "Relay deployment", href: RELAY_DEPLOYMENT_URL },
               { label: "Production notes", href: RELAY_PRODUCTION_URL },
@@ -248,14 +236,13 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* 3. Resource hub + version-aware docs entry */}
       <Section id="resources">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-10">
           <SectionHeader
             id="resources-heading"
             index="02"
             eyebrow="Documentation"
-            title="Everything, linked directly."
+            title="No maze. The important pages are right here."
             className="mb-0"
           />
           <div className="mb-1 flex items-center gap-3">
@@ -271,13 +258,12 @@ export default function HomePage() {
         <ResourceHub groups={RESOURCE_GROUPS} />
       </Section>
 
-      {/* 4. How it works — concise on purpose; the docs cover the rest. */}
       <Section id="how-it-works" className="bg-fd-muted/40">
         <SectionHeader
           id="how-it-works-heading"
           index="03"
           eyebrow="How it works"
-          title="Four ideas. That's the whole model."
+          title="Four ideas. No account system hiding underneath."
         />
         <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
           <div>
@@ -286,9 +272,8 @@ export default function HomePage() {
             </h3>
             <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
               Every device generates its own Ed25519 signing key and X25519 key-agreement key on
-              first use, kept in the OS Keychain where available. There are no Keyit user
-              accounts — a device joins a project only when an existing Owner or Admin approves
-              it by device, not by email.
+              first use, kept in the OS Keychain where available. There are no Keyit user accounts
+              to recover, suspend, or sell back to you — access is approved by device.
             </p>
           </div>
           <div>
@@ -319,7 +304,7 @@ export default function HomePage() {
             <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
               The relay above only ever holds what&apos;s on the far side of that dashed line: an
               encrypted, signed payload it can store and forward without being able to read it —
-              hosted or self-hosted, no exceptions.
+              hosted or self-hosted, same rule.
             </p>
           </div>
         </div>
@@ -341,18 +326,17 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* 5. Final CTA */}
       <Section id="get-started" className="pb-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2
             id="get-started-heading"
             className="text-balance text-2xl font-semibold tracking-tight text-fd-foreground sm:text-[1.7rem]"
           >
-            Keyit runs on your machines. Start on one.
+            Start with one machine. Add the team when it earns the space.
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-fd-muted-foreground">
-            The quickstart takes you from an empty directory to a pushed and pulled encrypted
-            revision with no relay and no second device required.
+            The quickstart takes you from an empty directory to an encrypted revision you can
+            inspect, push, and pull without pretending this is enterprise theater.
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <CTALink href="/docs/getting-started/installation">Install Keyit</CTALink>

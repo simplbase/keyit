@@ -5,9 +5,9 @@ description: Install the keyit and keyit-relay binaries via Homebrew, a Linux in
 
 <Available>every method on this page installs the real, current release binaries</Available>
 
-Keyit ships two binaries: `keyit`, the developer-facing CLI, and
-`keyit-relay`, the relay service (only needed if you're self-hosting a
-relay — most developers only need `keyit`).
+Keyit ships two binaries: `keyit`, the CLI you use day to day, and
+`keyit-relay`, the service you run when you want the relay on your own
+infrastructure. Most people only need `keyit` to start.
 
 ## Homebrew
 
@@ -87,11 +87,11 @@ include `bash`, `zsh`, `fish`, `powershell`, and `elvish`.
 
 ## Relay operators
 
-Everything above installs `keyit-relay`, but most developers never run
-it directly — projects default to the hosted relay at
-`https://relay.keyit.sh`. If you're standing up your own relay
-(self-hosting is a deliberate design goal, not an afterthought — the
-relay never needs to see plaintext), see
+Everything above installs `keyit-relay`, but you do not need to run it
+just to try Keyit. Projects default to the hosted relay at
+`https://relay.keyit.sh`. When this touches client work, production
+secrets, or policy, run your own relay instead. It is the same binary,
+and it still never needs plaintext. See
 [Relay container deployment](https://github.com/simplbase/keyit/blob/main/docs/relay-container-deployment.md)
 and
 [Production relay notes](https://github.com/simplbase/keyit/blob/main/docs/relay-production.md).

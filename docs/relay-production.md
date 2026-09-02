@@ -44,11 +44,11 @@ URL. `keyit-relay` does not terminate TLS itself.
 ## Hosted vs Self-Hosted Limits
 
 Hosted relay limits protect shared infrastructure. Self-hosted relay
-operators can configure their own limits.
+operators set their own rules.
 
-`keyit-relay` ships with five configurable account limits, all plain
-runtime configuration read at process start — never license checks,
-activation keys, or phone-home behavior:
+`keyit-relay` ships with five configurable account limits. They are
+plain runtime configuration read at process start: no license checks,
+no activation keys, no phone-home behavior.
 
 | Environment variable | What it caps | Self-hosted default |
 | --- | --- | --- |
@@ -78,12 +78,12 @@ documentation purposes only. This relay does not yet implement
 automated deletion of inactive projects — see "Known Limits" below —
 so setting it does not, by itself, delete anything.
 
-The example values above (`3` / `3` / `5` / `10000` / `30`) are what
-Keyit's own hosted relay runs with. A self-hosted relay is under no
-obligation to set any of them, and the CLI, protocol, and self-host
-flow behave identically either way: the CLI never enforces these
+The example values above (`3` / `3` / `5` / `10000` / `30`) are for
+Keyit's shared hosted relay. Use that relay to try the workflow. For
+client work, production secrets, or stricter policy, run your own. The
+CLI and protocol are the same either way: the CLI never enforces these
 limits locally, it only displays the relay's error if a configured
-hosted-relay limit is hit.
+relay limit is hit.
 
 For container deployment through the shared Simplbase VPS, see
 [`relay-container-deployment.md`](relay-container-deployment.md), which
