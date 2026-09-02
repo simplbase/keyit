@@ -16,8 +16,7 @@
 /*
  * Design tokens — Protocol Schematic (primary) + Terminal Ledger (restraint).
  *
- * Replaces the Phase 2 provisional palette. Two decisions carry the whole
- * system:
+ * Two decisions carry the whole system:
  *
  * 1. The ground is cool graphite/slate, not warm-gray — Fumadocs' own
  *    default leans warm; Keyit's doesn't.
@@ -30,9 +29,6 @@
  *    docs — see `capability-status.tsx` — so the brand and the content
  *    system reinforce each other instead of running in parallel. Neither
  *    is used decoratively; both stay rare on purpose.
- *
- * See the visual-direction writeup for the full rationale and the three
- * directions this was chosen from.
  */
 :root {
   --color-fd-background: hsl(210, 17%, 97%);
@@ -100,7 +96,7 @@ body {
 /* Modest radius everywhere authored specifically for Keyit (hero, terminal,
    diagrams, homepage buttons). Fumadocs' own precompiled chrome — sidebar,
    search dialog, TOC popover — ships its own radius baked into shipped CSS
-   and isn't touched here; see the implementation report. */
+   and isn't touched here. */
 .keyit-surface {
   border-radius: var(--keyit-radius);
 }

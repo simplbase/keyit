@@ -147,7 +147,14 @@ pub struct FileRelayStore {
 pub struct StoragePolicy {
     pub max_revision_metadata_bytes: usize,
     pub max_encrypted_payload_bytes: usize,
+    /// Maximum revision objects per project/environment. `0` disables this cap.
     pub max_revisions_per_environment: usize,
+    /// Maximum projects a single creator device may publish. `0` disables this cap.
+    pub max_projects_per_device: usize,
+    /// Maximum environments per project. `0` disables this cap.
+    pub max_environments_per_project: usize,
+    /// Maximum active devices per project. `0` disables this cap.
+    pub max_devices_per_project: usize,
 }
 
 impl Default for StoragePolicy {
@@ -156,6 +163,9 @@ impl Default for StoragePolicy {
             max_revision_metadata_bytes: 256 * 1024,
             max_encrypted_payload_bytes: 1024 * 1024,
             max_revisions_per_environment: 10_000,
+            max_projects_per_device: 0,
+            max_environments_per_project: 0,
+            max_devices_per_project: 0,
         }
     }
 }
@@ -444,6 +454,9 @@ impl FileRelayStore {
         layout: &RelayLayout,
         revision_id: &RevisionId,
     ) -> Result<(), RelayStoreError> {
+        if self.policy.max_revisions_per_environment == 0 {
+            return Ok(());
+        }
         if layout.revision_file(revision_id).exists() {
             return Ok(());
         }
@@ -542,12 +555,190 @@ impl FileRelayStore {
         object_id: &str,
         record: &[u8],
     ) -> Result<PathBuf, RelayStoreError> {
-        self.validate_access_record_policy(record)?;
         let path = self.access_record_file(project_id, kind, object_id);
+        self.write_access_record(&path, record)
+    }
+
+    /// Publishes a project genesis record after enforcing the creator-device cap.
+    pub fn publish_project_genesis_checked(
+        &self,
+        project_id: &ProjectId,
+        record: &[u8],
+    ) -> Result<PathBuf, RelayStoreError> {
+        let path = self.access_record_file(
+            project_id,
+            AccessRecordKind::ProjectGenesis,
+            project_id.as_str(),
+        );
+        if self.policy.max_projects_per_device == 0 || path.exists() {
+            return self.write_access_record(&path, record);
+        }
+        let locks_dir = self.root.join("locks");
+        fs::create_dir_all(&locks_dir).map_err(|e| RelayStoreError::io(&locks_dir, e))?;
+        let _lock = PublishLock::acquire(&locks_dir.join("project-quota.lock"))?;
+        if !path.exists() {
+            let parsed = parse_relay_project_genesis_record(record).map_err(|reason| {
+                RelayStoreError::Malformed {
+                    path: path.clone(),
+                    reason,
+                }
+            })?;
+            let count = self.count_projects_for_creator(&parsed.creator_device_id)?;
+            if count >= self.policy.max_projects_per_device {
+                return Err(RelayStoreError::Quota {
+                    reason: format!(
+                        "device {} already has {count} project(s) on this relay, limit is {}",
+                        parsed.creator_device_id, self.policy.max_projects_per_device
+                    ),
+                });
+            }
+        }
+        self.write_access_record(&path, record)
+    }
+
+    /// Publishes an environment genesis record after enforcing the project cap.
+    pub fn publish_environment_checked(
+        &self,
+        project_id: &ProjectId,
+        environment_id: &EnvironmentId,
+        record: &[u8],
+    ) -> Result<PathBuf, RelayStoreError> {
+        let path = self.access_record_file(
+            project_id,
+            AccessRecordKind::Environment,
+            environment_id.as_str(),
+        );
+        if self.policy.max_environments_per_project == 0 || path.exists() {
+            return self.write_access_record(&path, record);
+        }
+        let lock_path = self.project_quota_lock_path(project_id, "environment-quota.lock");
+        let lock_dir = lock_path.parent().expect("lock path has parent");
+        fs::create_dir_all(lock_dir).map_err(|e| RelayStoreError::io(lock_dir, e))?;
+        let _lock = PublishLock::acquire(&lock_path)?;
+        if !path.exists() {
+            let dir = path.parent().expect("access record file has parent");
+            let count = count_regular_files(dir)?;
+            if count >= self.policy.max_environments_per_project {
+                return Err(RelayStoreError::Quota {
+                    reason: format!(
+                        "project {project_id} already has {count} environment(s), limit is {}",
+                        self.policy.max_environments_per_project
+                    ),
+                });
+            }
+        }
+        self.write_access_record(&path, record)
+    }
+
+    /// Publishes an approval record after enforcing the active-device cap.
+    pub fn publish_approval_checked(
+        &self,
+        project_id: &ProjectId,
+        device_id: &DeviceId,
+        record: &[u8],
+    ) -> Result<PathBuf, RelayStoreError> {
+        let path =
+            self.access_record_file(project_id, AccessRecordKind::Approval, device_id.as_str());
+        if self.policy.max_devices_per_project == 0 || path.exists() {
+            return self.write_access_record(&path, record);
+        }
+        let lock_path = self.project_quota_lock_path(project_id, "device-quota.lock");
+        let lock_dir = lock_path.parent().expect("lock path has parent");
+        fs::create_dir_all(lock_dir).map_err(|e| RelayStoreError::io(lock_dir, e))?;
+        let _lock = PublishLock::acquire(&lock_path)?;
+        if !path.exists() {
+            let approvals_dir = path.parent().expect("access record file has parent");
+            let active = self.count_active_devices(project_id, approvals_dir)?;
+            if active >= self.policy.max_devices_per_project {
+                return Err(RelayStoreError::Quota {
+                    reason: format!(
+                        "project {project_id} already has {active} active device(s), limit is {}",
+                        self.policy.max_devices_per_project
+                    ),
+                });
+            }
+        }
+        self.write_access_record(&path, record)
+    }
+
+    fn write_access_record(&self, path: &Path, record: &[u8]) -> Result<PathBuf, RelayStoreError> {
+        self.validate_access_record_policy(record)?;
         let parent = path.parent().expect("access record file has parent");
         fs::create_dir_all(parent).map_err(|e| RelayStoreError::io(parent, e))?;
-        atomic_write(&path, record)?;
-        Ok(path)
+        atomic_write(path, record)?;
+        Ok(path.to_path_buf())
+    }
+
+    fn project_quota_lock_path(&self, project_id: &ProjectId, lock_name: &str) -> PathBuf {
+        self.root
+            .join("projects")
+            .join(project_id.as_str())
+            .join("access")
+            .join(lock_name)
+    }
+
+    /// Counts project genesis records by creator device.
+    fn count_projects_for_creator(
+        &self,
+        creator_device_id: &str,
+    ) -> Result<usize, RelayStoreError> {
+        let projects_dir = self.root.join("projects");
+        if !projects_dir.exists() {
+            return Ok(0);
+        }
+        let mut count = 0usize;
+        for project_dir in read_dir_paths(&projects_dir)? {
+            if !project_dir.is_dir() {
+                continue;
+            }
+            let Some(other_project_id) = file_name_str(&project_dir) else {
+                continue;
+            };
+            let record_path = project_dir
+                .join("access")
+                .join(AccessRecordKind::ProjectGenesis.as_str())
+                .join(format!("{other_project_id}.keyit"));
+            let Ok(bytes) = fs::read(&record_path) else {
+                continue;
+            };
+            let Ok(other) = parse_relay_project_genesis_record(&bytes) else {
+                continue;
+            };
+            if other.creator_device_id == creator_device_id {
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
+    /// Counts the creator plus approved devices without matching revocations.
+    fn count_active_devices(
+        &self,
+        project_id: &ProjectId,
+        approvals_dir: &Path,
+    ) -> Result<usize, RelayStoreError> {
+        let revocations_dir = self
+            .root
+            .join("projects")
+            .join(project_id.as_str())
+            .join("access")
+            .join(AccessRecordKind::Revocation.as_str());
+        let mut active = 1usize;
+        if approvals_dir.exists() {
+            for entry in read_dir_paths(approvals_dir)? {
+                if !entry.is_file() {
+                    continue;
+                }
+                let Some(stem) = entry.file_stem().and_then(|s| s.to_str()) else {
+                    continue;
+                };
+                if revocations_dir.join(format!("{stem}.keyit")).exists() {
+                    continue;
+                }
+                active += 1;
+            }
+        }
+        Ok(active)
     }
 
     /// Publishes a `JoinRequest` access record after enforcing the
@@ -1076,6 +1267,20 @@ fn read_dir_paths(path: &Path) -> Result<Vec<PathBuf>, RelayStoreError> {
     Ok(paths)
 }
 
+fn count_regular_files(dir: &Path) -> Result<usize, RelayStoreError> {
+    if !dir.exists() {
+        return Ok(0);
+    }
+    let mut count = 0usize;
+    for entry in fs::read_dir(dir).map_err(|e| RelayStoreError::io(dir, e))? {
+        let entry = entry.map_err(|e| RelayStoreError::io(dir, e))?;
+        if entry.path().is_file() {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
 fn file_name_str(path: &Path) -> Option<&str> {
     path.file_name().and_then(|name| name.to_str())
 }
@@ -1303,6 +1508,8 @@ impl Default for RelayHttpLimits {
 pub struct RelayServerOptions {
     pub http_limits: RelayHttpLimits,
     pub rate_limit_per_minute: u32,
+    /// Days of inactivity before a project is eligible for cleanup. `0` disables retention.
+    pub inactive_retention_days: u32,
 }
 
 impl Default for RelayServerOptions {
@@ -1310,6 +1517,7 @@ impl Default for RelayServerOptions {
         Self {
             http_limits: RelayHttpLimits::default(),
             rate_limit_per_minute: 120,
+            inactive_retention_days: 0,
         }
     }
 }
@@ -1551,6 +1759,37 @@ fn handle_http_request_inner(
                         &request.body,
                         unix_now(),
                     )
+                    .map_err(ApiError::from_store)?;
+                Ok(RelayHttpResponse {
+                    status: 201,
+                    body: Vec::new(),
+                })
+            }
+            HttpMethod::Put if route.kind == AccessRecordKind::ProjectGenesis => {
+                store
+                    .publish_project_genesis_checked(&route.project_id, &request.body)
+                    .map_err(ApiError::from_store)?;
+                Ok(RelayHttpResponse {
+                    status: 201,
+                    body: Vec::new(),
+                })
+            }
+            HttpMethod::Put if route.kind == AccessRecordKind::Environment => {
+                let environment_id = EnvironmentId::parse(&route.object_id)
+                    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+                store
+                    .publish_environment_checked(&route.project_id, &environment_id, &request.body)
+                    .map_err(ApiError::from_store)?;
+                Ok(RelayHttpResponse {
+                    status: 201,
+                    body: Vec::new(),
+                })
+            }
+            HttpMethod::Put if route.kind == AccessRecordKind::Approval => {
+                let device_id = DeviceId::parse(&route.object_id)
+                    .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+                store
+                    .publish_approval_checked(&route.project_id, &device_id, &request.body)
                     .map_err(ApiError::from_store)?;
                 Ok(RelayHttpResponse {
                     status: 201,
@@ -2686,6 +2925,20 @@ fn ensure_subset(requested: &[EnvironmentId], allowed: &[EnvironmentId]) -> Resu
     Ok(())
 }
 
+/// Project genesis fields needed for relay-side creator-device quotas.
+#[derive(Debug, Deserialize)]
+struct RelayProjectGenesisRecordToml {
+    creator_device_id: String,
+}
+
+fn parse_relay_project_genesis_record(
+    bytes: &[u8],
+) -> Result<RelayProjectGenesisRecordToml, String> {
+    let text = std::str::from_utf8(bytes)
+        .map_err(|e| format!("project genesis record is not UTF-8: {e}"))?;
+    toml::from_str(text).map_err(|e| format!("project genesis record TOML is malformed: {e}"))
+}
+
 /// The small subset of `keyit-cli`'s `InviteToml` fields
 /// [`FileRelayStore::publish_join_request_checked`] needs to enforce
 /// `max_uses`. Deliberately independent of `keyit-cli`'s own TOML
@@ -3242,6 +3495,9 @@ mod tests {
                 max_revision_metadata_bytes: 100,
                 max_encrypted_payload_bytes: 4,
                 max_revisions_per_environment: 10,
+                max_projects_per_device: 0,
+                max_environments_per_project: 0,
+                max_devices_per_project: 0,
             },
         );
         let (project_id, environment_id, revision_id) = ids();
@@ -3267,6 +3523,9 @@ mod tests {
                 max_revision_metadata_bytes: 100,
                 max_encrypted_payload_bytes: 100,
                 max_revisions_per_environment: 1,
+                max_projects_per_device: 0,
+                max_environments_per_project: 0,
+                max_devices_per_project: 0,
             },
         );
         let (project_id, environment_id, first_revision_id) = ids();
@@ -3293,6 +3552,257 @@ mod tests {
             )
             .expect_err("second publish should exceed revision count");
         assert!(matches!(err, RelayStoreError::Quota { .. }));
+    }
+
+    #[test]
+    fn zero_revisions_per_environment_disables_the_cap() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = FileRelayStore::with_policy(
+            dir.path(),
+            StoragePolicy {
+                max_revision_metadata_bytes: 100,
+                max_encrypted_payload_bytes: 100,
+                max_revisions_per_environment: 0,
+                max_projects_per_device: 0,
+                max_environments_per_project: 0,
+                max_devices_per_project: 0,
+            },
+        );
+        let (project_id, environment_id, first_revision_id) = ids();
+        let second_revision_id = RevisionId::new_unchecked_for_test(
+            "e6g2ph2r4afg3divn6cm6s3k2oz3zz22ie4zqq6r56ljveqlx7va",
+        );
+
+        store
+            .publish_revision(
+                &project_id,
+                &environment_id,
+                &first_revision_id,
+                b"metadata",
+                b"payload",
+            )
+            .expect("first publish");
+        store
+            .publish_revision(
+                &project_id,
+                &environment_id,
+                &second_revision_id,
+                b"metadata",
+                b"payload",
+            )
+            .expect("second publish should not be capped when the limit is 0");
+    }
+
+    mod hosted_relay_limits {
+        use super::*;
+
+        fn policy_with(
+            max_projects_per_device: usize,
+            max_environments_per_project: usize,
+            max_devices_per_project: usize,
+        ) -> StoragePolicy {
+            StoragePolicy {
+                max_projects_per_device,
+                max_environments_per_project,
+                max_devices_per_project,
+                ..StoragePolicy::default()
+            }
+        }
+
+        fn project_genesis_record(creator_device_id: &DeviceId) -> Vec<u8> {
+            format!("creator_device_id = \"{creator_device_id}\"\n").into_bytes()
+        }
+
+        #[test]
+        fn project_cap_rejects_a_second_project_from_the_same_creator_device() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(1, 0, 0));
+            let creator = DeviceId::new_unchecked_for_test(&"c".repeat(52));
+            let project_a = ProjectId::new_unchecked_for_test(&"p".repeat(52));
+            let project_b = ProjectId::new_unchecked_for_test(&"q".repeat(52));
+
+            store
+                .publish_project_genesis_checked(&project_a, &project_genesis_record(&creator))
+                .expect("first project should be allowed");
+
+            let err = store
+                .publish_project_genesis_checked(&project_b, &project_genesis_record(&creator))
+                .expect_err("second project from the same device should be rejected");
+            assert!(matches!(err, RelayStoreError::Quota { .. }));
+        }
+
+        #[test]
+        fn project_cap_of_zero_is_unlimited() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 0));
+            let creator = DeviceId::new_unchecked_for_test(&"c".repeat(52));
+            let project_a = ProjectId::new_unchecked_for_test(&"p".repeat(52));
+            let project_b = ProjectId::new_unchecked_for_test(&"q".repeat(52));
+
+            store
+                .publish_project_genesis_checked(&project_a, &project_genesis_record(&creator))
+                .expect("first project should be allowed");
+            store
+                .publish_project_genesis_checked(&project_b, &project_genesis_record(&creator))
+                .expect("second project should be allowed when the cap is disabled");
+        }
+
+        #[test]
+        fn project_cap_allows_republishing_the_same_project_idempotently() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(1, 0, 0));
+            let creator = DeviceId::new_unchecked_for_test(&"c".repeat(52));
+            let project_a = ProjectId::new_unchecked_for_test(&"p".repeat(52));
+
+            store
+                .publish_project_genesis_checked(&project_a, &project_genesis_record(&creator))
+                .expect("first publish should be allowed");
+            store
+                .publish_project_genesis_checked(&project_a, &project_genesis_record(&creator))
+                .expect("re-publishing the same project should stay idempotent");
+        }
+
+        #[test]
+        fn project_cap_tracks_devices_independently() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(1, 0, 0));
+            let device_a = DeviceId::new_unchecked_for_test(&"c".repeat(52));
+            let device_b = DeviceId::new_unchecked_for_test(&"e".repeat(52));
+            let project_a = ProjectId::new_unchecked_for_test(&"p".repeat(52));
+            let project_b = ProjectId::new_unchecked_for_test(&"q".repeat(52));
+
+            store
+                .publish_project_genesis_checked(&project_a, &project_genesis_record(&device_a))
+                .expect("device a's first project should be allowed");
+            store
+                .publish_project_genesis_checked(&project_b, &project_genesis_record(&device_b))
+                .expect("a different device's first project should also be allowed");
+        }
+
+        #[test]
+        fn environment_cap_rejects_a_fourth_environment() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 3, 0));
+            let (project_id, _, _) = ids();
+            let env_a = EnvironmentId::new_unchecked_for_test(&"1".repeat(52));
+            let env_b = EnvironmentId::new_unchecked_for_test(&"2".repeat(52));
+            let env_c = EnvironmentId::new_unchecked_for_test(&"3".repeat(52));
+            let env_d = EnvironmentId::new_unchecked_for_test(&"4".repeat(52));
+
+            for environment_id in [&env_a, &env_b, &env_c] {
+                store
+                    .publish_environment_checked(&project_id, environment_id, b"env genesis")
+                    .expect("environments within the cap should be allowed");
+            }
+
+            let err = store
+                .publish_environment_checked(&project_id, &env_d, b"env genesis")
+                .expect_err("the fourth environment should exceed the cap");
+            assert!(matches!(err, RelayStoreError::Quota { .. }));
+        }
+
+        #[test]
+        fn environment_cap_of_zero_is_unlimited() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 0));
+            let (project_id, _, _) = ids();
+
+            for index in 0..5 {
+                let environment_id =
+                    EnvironmentId::new_unchecked_for_test(&index.to_string().repeat(52));
+                store
+                    .publish_environment_checked(&project_id, &environment_id, b"env genesis")
+                    .expect("environments should never be capped when the limit is 0");
+            }
+        }
+
+        #[test]
+        fn environment_cap_allows_republishing_the_same_environment_idempotently() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 1, 0));
+            let (project_id, environment_id, _) = ids();
+
+            store
+                .publish_environment_checked(&project_id, &environment_id, b"env genesis v1")
+                .expect("first publish should be allowed");
+            store
+                .publish_environment_checked(&project_id, &environment_id, b"env genesis v1")
+                .expect("re-publishing the same environment should stay idempotent");
+        }
+
+        #[test]
+        fn device_cap_rejects_a_device_beyond_the_cap() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            // Cap of 2 total active devices: the project creator/owner
+            // (implicit) plus one approved device.
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 2));
+            let (project_id, _, _) = ids();
+            let device_a = DeviceId::new_unchecked_for_test(&"a".repeat(52));
+            let device_b = DeviceId::new_unchecked_for_test(&"b".repeat(52));
+
+            store
+                .publish_approval_checked(&project_id, &device_a, b"approval a")
+                .expect("first approved device should be within the cap");
+
+            let err = store
+                .publish_approval_checked(&project_id, &device_b, b"approval b")
+                .expect_err("a second approved device should exceed the cap");
+            assert!(matches!(err, RelayStoreError::Quota { .. }));
+        }
+
+        #[test]
+        fn device_cap_of_zero_is_unlimited() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 0));
+            let (project_id, _, _) = ids();
+
+            for index in 0..5 {
+                let device_id = DeviceId::new_unchecked_for_test(&index.to_string().repeat(52));
+                store
+                    .publish_approval_checked(&project_id, &device_id, b"approval")
+                    .expect("devices should never be capped when the limit is 0");
+            }
+        }
+
+        #[test]
+        fn device_cap_frees_a_slot_after_revocation() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 2));
+            let (project_id, _, _) = ids();
+            let device_a = DeviceId::new_unchecked_for_test(&"a".repeat(52));
+            let device_b = DeviceId::new_unchecked_for_test(&"b".repeat(52));
+
+            store
+                .publish_approval_checked(&project_id, &device_a, b"approval a")
+                .expect("first approved device should be within the cap");
+            store
+                .publish_access_record(
+                    &project_id,
+                    AccessRecordKind::Revocation,
+                    device_a.as_str(),
+                    b"revocation a",
+                )
+                .expect("revoking device a should be allowed");
+
+            store
+                .publish_approval_checked(&project_id, &device_b, b"approval b")
+                .expect("device b should take the slot device a's revocation freed");
+        }
+
+        #[test]
+        fn device_cap_allows_reapproving_an_already_approved_device_idempotently() {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let store = FileRelayStore::with_policy(dir.path(), policy_with(0, 0, 2));
+            let (project_id, _, _) = ids();
+            let device_a = DeviceId::new_unchecked_for_test(&"a".repeat(52));
+
+            store
+                .publish_approval_checked(&project_id, &device_a, b"approval a v1")
+                .expect("first approval should be allowed");
+            store
+                .publish_approval_checked(&project_id, &device_a, b"approval a v2")
+                .expect("re-approving (e.g. a role change) should stay idempotent");
+        }
     }
 
     #[test]
@@ -3447,6 +3957,45 @@ mod tests {
         );
         assert_eq!(fetched.status, 200);
         assert_eq!(fetched.body, b"signed invite bytes");
+    }
+
+    #[test]
+    fn http_environment_cap_returns_413_over_the_wire() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = FileRelayStore::with_policy(
+            dir.path(),
+            StoragePolicy {
+                max_environments_per_project: 1,
+                ..StoragePolicy::default()
+            },
+        );
+        let (project_id, environment_id, _) = ids();
+        let other_environment_id = EnvironmentId::new_unchecked_for_test(&"z".repeat(52));
+
+        let first = handle_http_request(
+            &store,
+            RelayHttpRequest {
+                method: HttpMethod::Put,
+                path: format!("/v1/projects/{project_id}/access/environments/{environment_id}"),
+                body: b"env genesis".to_vec(),
+                peer_addr: None,
+            },
+        );
+        assert_eq!(first.status, 201);
+
+        let second = handle_http_request(
+            &store,
+            RelayHttpRequest {
+                method: HttpMethod::Put,
+                path: format!(
+                    "/v1/projects/{project_id}/access/environments/{other_environment_id}"
+                ),
+                body: b"env genesis".to_vec(),
+                peer_addr: None,
+            },
+        );
+        assert_eq!(second.status, 413);
+        assert!(String::from_utf8_lossy(&second.body).contains("limit is 1"));
     }
 
     #[test]

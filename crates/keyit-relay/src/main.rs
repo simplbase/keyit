@@ -63,9 +63,28 @@ enum Command {
         /// Maximum encrypted payload bytes stored by the relay.
         #[arg(long = "max-encrypted-payload-bytes")]
         max_encrypted_payload_bytes: Option<usize>,
-        /// Maximum revision objects per project/environment.
+        /// Maximum revision objects per project/environment. 0 disables
+        /// this cap; unset keeps the built-in production-safe default.
         #[arg(long = "max-revisions-per-environment")]
         max_revisions_per_environment: Option<usize>,
+        /// Maximum projects a single creator device may publish to
+        /// this relay. 0 or unset disables this cap.
+        #[arg(long = "max-projects-per-device")]
+        max_projects_per_device: Option<usize>,
+        /// Maximum environments per project. 0 or unset disables this
+        /// cap.
+        #[arg(long = "max-environments-per-project")]
+        max_environments_per_project: Option<usize>,
+        /// Maximum active devices per project. 0 or unset disables this
+        /// cap.
+        #[arg(long = "max-devices-per-project")]
+        max_devices_per_project: Option<usize>,
+        /// Days of inactivity after which a project is eligible for
+        /// retention cleanup. 0 or unset disables retention. Recorded
+        /// for configuration/documentation only: this relay does not
+        /// yet delete inactive projects.
+        #[arg(long = "inactive-retention-days")]
+        inactive_retention_days: Option<u32>,
         /// Maximum requests per peer IP per minute. Use 0 to disable.
         #[arg(long = "rate-limit-per-minute")]
         rate_limit_per_minute: Option<u32>,
@@ -131,6 +150,10 @@ fn main() -> ExitCode {
             max_revision_metadata_bytes,
             max_encrypted_payload_bytes,
             max_revisions_per_environment,
+            max_projects_per_device,
+            max_environments_per_project,
+            max_devices_per_project,
+            inactive_retention_days,
             rate_limit_per_minute,
             print_config,
         }) => {
@@ -146,6 +169,10 @@ fn main() -> ExitCode {
                 max_revision_metadata_bytes,
                 max_encrypted_payload_bytes,
                 max_revisions_per_environment,
+                max_projects_per_device,
+                max_environments_per_project,
+                max_devices_per_project,
+                inactive_retention_days,
                 rate_limit_per_minute,
             }) {
                 Ok(config) => config,
@@ -169,8 +196,15 @@ fn main() -> ExitCode {
                     config.server_options.http_limits.max_body_bytes,
                     config.store_policy.max_encrypted_payload_bytes,
                     config.store_policy.max_revision_metadata_bytes,
-                    config.store_policy.max_revisions_per_environment,
+                    fmt_count_limit(config.store_policy.max_revisions_per_environment),
                     config.server_options.rate_limit_per_minute
+                );
+                println!(
+                    "hosted limits:    projects/device={} environments/project={} devices/project={} inactive-retention={}",
+                    fmt_count_limit(config.store_policy.max_projects_per_device),
+                    fmt_count_limit(config.store_policy.max_environments_per_project),
+                    fmt_count_limit(config.store_policy.max_devices_per_project),
+                    fmt_retention_days(config.server_options.inactive_retention_days),
                 );
             }
             let store = FileRelayStore::with_policy(&config.root, config.store_policy.clone());
@@ -291,6 +325,22 @@ fn run_maintenance_command(command: MaintenanceCommand) -> ExitCode {
     }
 }
 
+fn fmt_count_limit(value: usize) -> String {
+    if value == 0 {
+        "unlimited".to_string()
+    } else {
+        value.to_string()
+    }
+}
+
+fn fmt_retention_days(days: u32) -> String {
+    if days == 0 {
+        "disabled".to_string()
+    } else {
+        format!("{days}d")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RelayRuntimeConfig {
     root: PathBuf,
@@ -314,6 +364,10 @@ struct RelayRuntimeInputs {
     max_revision_metadata_bytes: Option<usize>,
     max_encrypted_payload_bytes: Option<usize>,
     max_revisions_per_environment: Option<usize>,
+    max_projects_per_device: Option<usize>,
+    max_environments_per_project: Option<usize>,
+    max_devices_per_project: Option<usize>,
+    inactive_retention_days: Option<u32>,
     rate_limit_per_minute: Option<u32>,
 }
 
@@ -386,6 +440,21 @@ impl RelayRuntimeConfig {
                 "KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT",
                 default_storage.max_revisions_per_environment,
             )?,
+            max_projects_per_device: resolve_usize(
+                inputs.max_projects_per_device,
+                "KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE",
+                default_storage.max_projects_per_device,
+            )?,
+            max_environments_per_project: resolve_usize(
+                inputs.max_environments_per_project,
+                "KEYIT_RELAY_MAX_ENVIRONMENTS_PER_PROJECT",
+                default_storage.max_environments_per_project,
+            )?,
+            max_devices_per_project: resolve_usize(
+                inputs.max_devices_per_project,
+                "KEYIT_RELAY_MAX_DEVICES_PER_PROJECT",
+                default_storage.max_devices_per_project,
+            )?,
         };
         let http_limits = RelayHttpLimits {
             max_header_bytes: resolve_usize(
@@ -415,12 +484,18 @@ impl RelayRuntimeConfig {
                     .to_string(),
             );
         }
+        let default_server = RelayServerOptions::default();
         let server_options = RelayServerOptions {
             http_limits,
             rate_limit_per_minute: resolve_u32(
                 inputs.rate_limit_per_minute,
                 "KEYIT_RELAY_RATE_LIMIT_PER_MINUTE",
-                RelayServerOptions::default().rate_limit_per_minute,
+                default_server.rate_limit_per_minute,
+            )?,
+            inactive_retention_days: resolve_u32(
+                inputs.inactive_retention_days,
+                "KEYIT_RELAY_INACTIVE_RETENTION_DAYS",
+                default_server.inactive_retention_days,
             )?,
         };
         Ok(Self {
@@ -539,6 +614,10 @@ mod tests {
                 max_revision_metadata_bytes,
                 max_encrypted_payload_bytes,
                 max_revisions_per_environment,
+                max_projects_per_device,
+                max_environments_per_project,
+                max_devices_per_project,
+                inactive_retention_days,
                 rate_limit_per_minute,
                 print_config,
             }) => {
@@ -553,6 +632,10 @@ mod tests {
                 assert_eq!(max_revision_metadata_bytes, None);
                 assert_eq!(max_encrypted_payload_bytes, None);
                 assert_eq!(max_revisions_per_environment, None);
+                assert_eq!(max_projects_per_device, None);
+                assert_eq!(max_environments_per_project, None);
+                assert_eq!(max_devices_per_project, None);
+                assert_eq!(inactive_retention_days, None);
                 assert_eq!(rate_limit_per_minute, None);
                 assert!(!print_config);
             }
@@ -575,6 +658,14 @@ mod tests {
             "1234",
             "--max-encrypted-payload-bytes",
             "1000",
+            "--max-projects-per-device",
+            "3",
+            "--max-environments-per-project",
+            "3",
+            "--max-devices-per-project",
+            "5",
+            "--inactive-retention-days",
+            "30",
             "--rate-limit-per-minute",
             "7",
         ])
@@ -585,6 +676,10 @@ mod tests {
                 public_url,
                 max_body_bytes,
                 max_encrypted_payload_bytes,
+                max_projects_per_device,
+                max_environments_per_project,
+                max_devices_per_project,
+                inactive_retention_days,
                 rate_limit_per_minute,
                 ..
             }) => {
@@ -592,6 +687,10 @@ mod tests {
                 assert_eq!(public_url.as_deref(), Some("https://relay.example"));
                 assert_eq!(max_body_bytes, Some(1234));
                 assert_eq!(max_encrypted_payload_bytes, Some(1000));
+                assert_eq!(max_projects_per_device, Some(3));
+                assert_eq!(max_environments_per_project, Some(3));
+                assert_eq!(max_devices_per_project, Some(5));
+                assert_eq!(inactive_retention_days, Some(30));
                 assert_eq!(rate_limit_per_minute, Some(7));
             }
             other => panic!("expected serve command, got {other:?}"),
@@ -726,6 +825,10 @@ mod tests {
             max_request_payload_bytes: Some(1024),
             max_encrypted_payload_bytes: Some(1024),
             max_revisions_per_environment: Some(9),
+            max_projects_per_device: Some(3),
+            max_environments_per_project: Some(3),
+            max_devices_per_project: Some(5),
+            inactive_retention_days: Some(30),
             rate_limit_per_minute: Some(3),
             ..runtime_inputs(
                 Some(std::env::temp_dir().join("keyit-relay-limits-test")),
@@ -738,7 +841,59 @@ mod tests {
         assert_eq!(config.server_options.http_limits.max_body_bytes, 2048);
         assert_eq!(config.store_policy.max_encrypted_payload_bytes, 1024);
         assert_eq!(config.store_policy.max_revisions_per_environment, 9);
+        assert_eq!(config.store_policy.max_projects_per_device, 3);
+        assert_eq!(config.store_policy.max_environments_per_project, 3);
+        assert_eq!(config.store_policy.max_devices_per_project, 5);
+        assert_eq!(config.server_options.inactive_retention_days, 30);
         assert_eq!(config.server_options.rate_limit_per_minute, 3);
+    }
+
+    #[test]
+    fn runtime_config_defaults_new_limits_to_unlimited() {
+        let config = RelayRuntimeConfig::resolve(runtime_inputs(
+            Some(std::env::temp_dir().join("keyit-relay-defaults-test")),
+            None,
+            None,
+        ))
+        .expect("config");
+
+        assert_eq!(config.store_policy.max_projects_per_device, 0);
+        assert_eq!(config.store_policy.max_environments_per_project, 0);
+        assert_eq!(config.store_policy.max_devices_per_project, 0);
+        assert_eq!(config.server_options.inactive_retention_days, 0);
+        assert_eq!(config.store_policy.max_revisions_per_environment, 10_000);
+    }
+
+    #[test]
+    fn runtime_config_zero_disables_revisions_per_environment_cap() {
+        let config = RelayRuntimeConfig::resolve(RelayRuntimeInputs {
+            max_revisions_per_environment: Some(0),
+            ..runtime_inputs(
+                Some(std::env::temp_dir().join("keyit-relay-zero-test")),
+                None,
+                None,
+            )
+        })
+        .expect("config");
+
+        assert_eq!(config.store_policy.max_revisions_per_environment, 0);
+    }
+
+    #[test]
+    fn runtime_config_rejects_invalid_hosted_limit_values() {
+        let previous = std::env::var_os("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE");
+        std::env::set_var("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE", "not-a-number");
+        let result = RelayRuntimeConfig::resolve(runtime_inputs(
+            Some(std::env::temp_dir().join("keyit-relay-invalid-env-test")),
+            None,
+            None,
+        ));
+        match previous {
+            Some(value) => std::env::set_var("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE", value),
+            None => std::env::remove_var("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE"),
+        }
+        let err = result.expect_err("invalid limit value should fail startup");
+        assert!(err.contains("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE"));
     }
 
     fn runtime_inputs(
@@ -758,6 +913,10 @@ mod tests {
             max_revision_metadata_bytes: None,
             max_encrypted_payload_bytes: None,
             max_revisions_per_environment: None,
+            max_projects_per_device: None,
+            max_environments_per_project: None,
+            max_devices_per_project: None,
+            inactive_retention_days: None,
             rate_limit_per_minute: None,
         }
     }

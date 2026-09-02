@@ -28,8 +28,19 @@ export const metadata: Metadata = {
     "local-first developer tools",
   ],
   authors: [{ name: "Keyit" }],
+  manifest: "/manifest.webmanifest",
   alternates: {
     canonical: "/",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32", type: "image/x-icon" },
+      { url: "/keyit-square-cutout.svg", sizes: "1024x1024", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type: "website",
@@ -37,11 +48,20 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} — private project state, synced securely`,
     description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Keyit mark",
+      },
+    ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: `${SITE_NAME} — private project state, synced securely`,
     description: SITE_DESCRIPTION,
+    images: ["/icon-512.png"],
   },
 };
 

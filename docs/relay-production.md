@@ -29,10 +29,61 @@ export KEYIT_RELAY_MAX_REQUEST_PAYLOAD_BYTES=1572864
 export KEYIT_RELAY_MAX_REVISION_METADATA_BYTES=262144
 export KEYIT_RELAY_MAX_ENCRYPTED_PAYLOAD_BYTES=1048576
 export KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT=10000
+
+# Hosted-relay account limits. Leave unset (or set to 0) to run this
+# relay unrestricted — see "Hosted vs Self-Hosted Limits" below.
+export KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE=3
+export KEYIT_RELAY_MAX_ENVIRONMENTS_PER_PROJECT=3
+export KEYIT_RELAY_MAX_DEVICES_PER_PROJECT=5
+export KEYIT_RELAY_INACTIVE_RETENTION_DAYS=30
 ```
 
 Production mode requires an absolute storage root and an HTTPS public
 URL. `keyit-relay` does not terminate TLS itself.
+
+## Hosted vs Self-Hosted Limits
+
+Hosted relay limits protect shared infrastructure. Self-hosted relay
+operators can configure their own limits.
+
+`keyit-relay` ships with five configurable account limits, all plain
+runtime configuration read at process start — never license checks,
+activation keys, or phone-home behavior:
+
+| Environment variable | What it caps | Self-hosted default |
+| --- | --- | --- |
+| `KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE` | Projects a single creator device may publish to this relay | unlimited |
+| `KEYIT_RELAY_MAX_ENVIRONMENTS_PER_PROJECT` | Environments per project | unlimited |
+| `KEYIT_RELAY_MAX_DEVICES_PER_PROJECT` | Active (approved, non-revoked) devices per project | unlimited |
+| `KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT` | Revision objects per environment | 10000 |
+| `KEYIT_RELAY_INACTIVE_RETENTION_DAYS` | Days of inactivity before a project is *eligible* for retention cleanup | disabled |
+
+For every limit above, leaving the variable unset keeps the
+self-hosted default in the table, and explicitly setting it to `0`
+always disables that limit — a self-hosted operator can raise or
+disable any of them freely. A positive integer enforces that exact
+cap. An unparsable value (not a non-negative integer) fails relay
+startup with a clear error rather than silently falling back to a
+default.
+
+`KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT` is the one exception to
+"unset means unlimited": it already had a production-safe default
+before the other hosted-relay limits existed, so leaving it unset
+keeps that default (`10000`) instead of becoming unlimited. Set it to
+`0` explicitly if a self-hosted deployment wants it uncapped.
+
+`KEYIT_RELAY_INACTIVE_RETENTION_DAYS` is recorded and surfaced (e.g.
+via `keyit-relay serve --print-config`) for configuration and
+documentation purposes only. This relay does not yet implement
+automated deletion of inactive projects — see "Known Limits" below —
+so setting it does not, by itself, delete anything.
+
+The example values above (`3` / `3` / `5` / `10000` / `30`) are what
+Keyit's own hosted relay runs with. A self-hosted relay is under no
+obligation to set any of them, and the CLI, protocol, and self-host
+flow behave identically either way: the CLI never enforces these
+limits locally, it only displays the relay's error if a configured
+hosted-relay limit is hit.
 
 For container deployment through the shared Simplbase VPS, see
 [`relay-container-deployment.md`](relay-container-deployment.md), which
@@ -88,9 +139,12 @@ The filesystem backend now enforces:
 - maximum revision metadata size;
 - maximum encrypted payload size;
 - maximum revisions per project/environment;
+- maximum projects per creator device, environments per project, and
+  active devices per project (see "Hosted vs Self-Hosted Limits" above);
 - atomic writes through same-directory temporary files and rename;
 - per-environment publish lock during latest-pointer conflict checks and
-  writes.
+  writes, and an equivalent per-project lock guarding the account limits
+  above against concurrent publishes.
 
 Backups should include the entire `KEYIT_RELAY_ROOT`. The relay does not
 currently implement revision object garbage collection or retention
@@ -138,6 +192,10 @@ final hosted Keyit service. Known limits:
 
 - object-store or database-backed storage;
 - revision retention/garbage-collection policy;
+- automated deletion of inactive projects: `KEYIT_RELAY_INACTIVE_RETENTION_DAYS`
+  represents the policy in configuration, but no background job acts on
+  it yet, since this filesystem backend has no safe cleanup path for
+  deleting an entire project tree;
 - multi-instance coordination for publish locks and nonce replay state;
 - durable/shared metrics;
 - automated backup/restore tests;

@@ -2,10 +2,23 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Available, ProtocolDefined } from "@/components/capability-status";
-import { DeviceAuthDiagram, SyncFlowDiagram, TrustBoundaryDiagram } from "@/components/diagrams";
-import { GITHUB_URL, PROTOCOL_SPEC_URL, CONTRIBUTING_URL } from "@/lib/layout.shared";
+import { SyncFlowDiagram, TrustBoundaryDiagram } from "@/components/diagrams";
+import { ResourceHub, type ResourceGroup } from "@/components/resource-hub";
 import { SectionHeader } from "@/components/section-header";
 import { Terminal, type TerminalLine } from "@/components/terminal";
+import { VersionPill } from "@/components/version-pill";
+import {
+  ARCHITECTURE_URL,
+  CONTRIBUTING_URL,
+  DOCKER_IMAGE_URL,
+  GITHUB_URL,
+  LICENSE_URL,
+  PROTOCOL_SPEC_URL,
+  RELAY_DEPLOYMENT_URL,
+  RELAY_PRODUCTION_URL,
+  SECURITY_POLICY_URL,
+  TRY_LOCAL_URL,
+} from "@/lib/layout.shared";
 
 /**
  * Keyit homepage.
@@ -41,43 +54,52 @@ const SYNC_LINES: TerminalLine[] = [
   { type: "output", text: "  local base: kvr_a10f2c9e…" },
   { type: "output", text: "  state:      local file present, 14 keys parsed" },
   { type: "blank" },
-  { type: "command", text: "keyit diff production" },
-  { type: "output", text: "  modified   STRIPE_WEBHOOK_SECRET" },
-  { type: "blank" },
-  { type: "command", text: "keyit push production --relay-url https://relay.keyit.sh" },
-  { type: "output", text: "Created local encrypted revision kvr_9c2e41af… for production", tone: "success" },
-  { type: "blank" },
   { type: "command", text: "keyit pull production --relay-url https://relay.keyit.sh" },
   { type: "output", text: "Materialized local revision kvr_9c2e41af… for production", tone: "success" },
 ];
 
-const DEVICE_LINES: TerminalLine[] = [
-  { type: "command", text: "keyit join kvi_7a30f1e2… --env production" },
-  { type: "output", text: "Created join request for kvd_5e91a0c3…" },
-  { type: "output", text: "  environments: 1" },
-  { type: "blank" },
-  { type: "command", text: "keyit approve kvd_5e91a0c3… --role admin" },
-  { type: "output", text: "Approved device kvd_5e91a0c3…", tone: "success" },
-  { type: "output", text: "  role:         admin" },
-];
-
-const ENV_LINES: TerminalLine[] = [
-  { type: "command", text: "keyit env add production .env.production" },
-  { type: "output", text: "Added Keyit environment production (kve_71cd0f88…)", tone: "success" },
-  { type: "blank" },
-  { type: "command", text: "keyit env list" },
-  { type: "output", text: "Environment development (kve_1a2b3c9d…)" },
-  { type: "output", text: "  local path:   .env.local" },
-  { type: "output", text: "Environment production (kve_71cd0f88…)" },
-  { type: "output", text: "  local path:   .env.production" },
-];
-
-const REVISION_LINES: TerminalLine[] = [
-  { type: "command", text: "keyit revision list production" },
-  { type: "output", text: "Revision kvr_9c2e41af…" },
-  { type: "output", text: "  parent:     kvr_a10f2c9e…" },
-  { type: "output", text: "  author:     kvd_3b7e0a12…" },
-  { type: "output", text: "  summary:    rotate webhook secret" },
+const RESOURCE_GROUPS: ResourceGroup[] = [
+  {
+    title: "Get started",
+    links: [
+      { label: "Install", href: "/docs/getting-started/installation" },
+      { label: "Quickstart", href: "/docs/getting-started/quickstart" },
+      { label: "Try local", href: TRY_LOCAL_URL, external: true },
+    ],
+  },
+  {
+    title: "Operate",
+    links: [
+      { label: "Relay deployment", href: RELAY_DEPLOYMENT_URL, external: true },
+      { label: "Production relay notes", href: RELAY_PRODUCTION_URL, external: true },
+      { label: "Docker image", href: DOCKER_IMAGE_URL, external: true },
+    ],
+  },
+  {
+    title: "Understand",
+    links: [
+      { label: "Architecture", href: ARCHITECTURE_URL, external: true },
+      { label: "Security model", href: "/docs/security" },
+      { label: "Protocol spec", href: PROTOCOL_SPEC_URL, external: true },
+    ],
+  },
+  {
+    title: "Reference",
+    links: [
+      { label: "CLI", href: "/docs/reference/cli" },
+      { label: "Configuration", href: "/docs/reference/configuration" },
+      { label: "File formats", href: "/docs/reference/file-formats" },
+    ],
+  },
+  {
+    title: "Project",
+    links: [
+      { label: "GitHub", href: GITHUB_URL, external: true },
+      { label: "License (Apache-2.0)", href: LICENSE_URL, external: true },
+      { label: "Contributing", href: CONTRIBUTING_URL, external: true },
+      { label: "Security policy", href: SECURITY_POLICY_URL, external: true },
+    ],
+  },
 ];
 
 function Section({
@@ -123,30 +145,71 @@ function CTALink({
   );
 }
 
+function RelayCard({
+  eyebrow,
+  title,
+  body,
+  links,
+}: {
+  eyebrow: string;
+  title: string;
+  body: ReactNode;
+  links: { label: string; href: string }[];
+}) {
+  return (
+    <div className="keyit-surface flex flex-col gap-3 border border-fd-border bg-fd-card px-5 py-6 sm:px-6 sm:py-7">
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-fd-muted-foreground">
+        {eyebrow}
+      </span>
+      <h3 className="font-mono text-[15px] font-medium text-fd-foreground">{title}</h3>
+      <p className="text-[14px] leading-relaxed text-fd-muted-foreground">{body}</p>
+      {links.length > 0 ? (
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5">
+          {links.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-[12.5px] text-fd-primary underline decoration-fd-primary/30 underline-offset-4 hover:decoration-fd-primary"
+            >
+              {link.label} ↗
+            </a>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <main>
-      {/* 1. Hero */}
+      {/* 1. Hero — "Keyit" has to be unmistakable in the first viewport. */}
       <section className="border-t border-fd-border pt-14 pb-16 sm:pt-20 sm:pb-24">
         <div className="mx-auto grid w-full max-w-5xl gap-10 px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-8">
           <div>
             <p className="mb-5 font-mono text-xs uppercase tracking-[0.08em] text-fd-muted-foreground">
-              open-source · local-first · MIT/Apache-2.0
+              open-source · local-first · Apache-2.0
             </p>
-            <h1 className="text-balance text-[2.15rem] font-semibold leading-[1.14] tracking-tight text-fd-foreground sm:text-4xl lg:text-[2.65rem]">
-              Sync private project state across your team&apos;s machines — encrypted before it
-              ever leaves yours.
+            <h1 className="text-balance text-[2.3rem] font-semibold leading-[1.1] tracking-tight text-fd-foreground sm:text-[2.6rem] lg:text-[2.9rem]">
+              Keyit is encrypted <code className="text-fd-primary">.env</code> sync for teams.
             </h1>
             <p className="mt-5 max-w-xl text-[15.5px] leading-relaxed text-fd-muted-foreground sm:text-base">
-              Keyit encrypts <code className="text-fd-foreground">.env</code> files locally with
-              each device&apos;s own key, signs every change, and moves only ciphertext through a
-              relay that never sees your secrets. A device gets access only when an Owner or
-              Admin explicitly approves it — there&apos;s no email invite and no OAuth identity.
+              No secrets manager account. No email invites. No vault to stand up. Each device
+              signs and encrypts locally, and the relay in the middle only ever moves ciphertext
+              it can&apos;t read.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <CTALink href="/docs/getting-started/installation">Install Keyit</CTALink>
+              <CTALink href="/docs/getting-started/installation">Install</CTALink>
+              <CTALink href="/docs" variant="secondary">
+                Read docs
+              </CTALink>
+              <CTALink href="#relay" variant="secondary">
+                Run your own relay
+              </CTALink>
               <CTALink href={GITHUB_URL} variant="secondary">
-                View on GitHub
+                GitHub
               </CTALink>
             </div>
           </div>
@@ -154,162 +217,131 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. The problem */}
-      <Section id="the-problem">
+      {/* 2. Hosted relay or your own */}
+      <Section id="relay">
         <SectionHeader
-          id="the-problem-heading"
+          id="relay-heading"
           index="01"
-          eyebrow="Why this gets messy"
-          title="Private project state doesn't stay in sync on its own."
+          eyebrow="Hosted or self-hosted"
+          title="Use the hosted relay to try Keyit fast. Run your own when the secrets are real."
+          dek="Either way the trust model doesn't change: the relay stores and forwards signed, encrypted revisions. It has no key that can open them, so there's nothing sensitive for it to leak even if it's fully compromised."
         />
-        <div className="grid gap-x-10 gap-y-3 text-[15px] leading-relaxed text-fd-muted-foreground sm:grid-cols-2">
-          <p>— a teammate pastes a <code className="text-fd-foreground">.env</code> block into a chat thread to unblock someone</p>
-          <p>— the copy on your machine is quietly a few keys behind theirs</p>
-          <p>— a value gets rotated and someone has to remember who still needs the new one</p>
-          <p>— nobody can say, with certainty, which revision a given machine is running</p>
-          <p>— a project has development, staging, and production state to keep straight</p>
-          <p>— revoking someone&apos;s laptop access doesn&apos;t rotate anything by itself</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <RelayCard
+            eyebrow="Default"
+            title="Hosted — relay.keyit.sh"
+            body="Zero setup. No signup. keyit init works immediately against it. A reasonable default for trying Keyit and for lower-stakes projects."
+            links={[]}
+          />
+          <RelayCard
+            eyebrow="Your infrastructure"
+            title="Self-hosted"
+            body="Run the same keyit-relay binary or container yourself — the right call for client work, production secrets, or a compliance requirement the hosted relay can't satisfy. The source is right here."
+            links={[
+              { label: "Relay deployment", href: RELAY_DEPLOYMENT_URL },
+              { label: "Production notes", href: RELAY_PRODUCTION_URL },
+            ]}
+          />
+        </div>
+        <div className="mt-6">
+          <TrustBoundaryDiagram />
         </div>
       </Section>
 
-      {/* 3. How Keyit works */}
-      <Section id="how-it-works">
+      {/* 3. Resource hub + version-aware docs entry */}
+      <Section id="resources">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-10">
+          <SectionHeader
+            id="resources-heading"
+            index="02"
+            eyebrow="Documentation"
+            title="Everything, linked directly."
+            className="mb-0"
+          />
+          <div className="mb-1 flex items-center gap-3">
+            <VersionPill />
+            <Link
+              href="/docs"
+              className="font-mono text-[13px] text-fd-primary underline decoration-fd-primary/30 underline-offset-4 hover:decoration-fd-primary"
+            >
+              Browse the docs →
+            </Link>
+          </div>
+        </div>
+        <ResourceHub groups={RESOURCE_GROUPS} />
+      </Section>
+
+      {/* 4. How it works — concise on purpose; the docs cover the rest. */}
+      <Section id="how-it-works" className="bg-fd-muted/40">
         <SectionHeader
           id="how-it-works-heading"
-          index="02"
-          eyebrow="How Keyit works"
-          title="Two devices, one relay that only ever sees ciphertext."
+          index="03"
+          eyebrow="How it works"
+          title="Four ideas. That's the whole model."
         />
-        <SyncFlowDiagram />
-      </Section>
-
-      {/* 4. Explicit synchronization */}
-      <Section id="explicit-sync">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-12">
-          <SectionHeader
-            id="explicit-sync-heading"
-            index="03"
-            eyebrow="Explicit synchronization"
-            title="Nothing syncs until you run a command."
-            dek={
-              <>
-                Keyit has no background daemon and no invisible auto-sync.{" "}
-                <code className="text-fd-foreground">status</code> and{" "}
-                <code className="text-fd-foreground">diff</code> tell you exactly what state
-                you&apos;re in before you touch anything; <code className="text-fd-foreground">push</code> and{" "}
-                <code className="text-fd-foreground">pull</code> are the only two ways state moves.
-              </>
-            }
-          />
-          <div className="flex flex-col gap-4">
-            <Terminal label="explicit sync" lines={SYNC_LINES} />
-            <Available>
-              <code>status</code>, <code>diff</code>, <code>push</code>, and <code>pull</code> are
-              all real, working commands in the current CLI
-            </Available>
-          </div>
-        </div>
-      </Section>
-
-      {/* 5. Device-based authorization */}
-      <Section id="device-authorization">
-        <SectionHeader
-          id="device-authorization-heading"
-          index="04"
-          eyebrow="Device authorization"
-          title="Access is granted to devices, by people — not by email."
-          dek="Every device has its own Ed25519 signing identity, generated on first use. A new device requests access with an invite; an Owner or Admin approves it and picks its role explicitly. There's no account system underneath this — identity is cryptographic, not an email address."
-        />
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-10">
-          <DeviceAuthDiagram />
-          <Terminal label="device authorization" lines={DEVICE_LINES} />
-        </div>
-        <p className="mt-6 max-w-2xl font-mono text-[13px] text-fd-muted-foreground">
-          Roles: <span className="text-fd-foreground">Owner</span>,{" "}
-          <span className="text-fd-foreground">Admin</span>,{" "}
-          <span className="text-fd-foreground">Member</span> — an Owner or an Admin may approve a
-          joining device.
-        </p>
-      </Section>
-
-      {/* 6. Environments */}
-      <Section id="environments">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-12">
-          <SectionHeader
-            id="environments-heading"
-            index="05"
-            eyebrow="Environments"
-            title="Development, staging, and production don't share a key."
-            dek="Each environment gets its own genesis, its own encryption key, and its own revision history. A device authorized for development isn't automatically authorized for production — access and keys are scoped per environment, not per project."
-          />
-          <Terminal label="environments" lines={ENV_LINES} />
-        </div>
-      </Section>
-
-      {/* 7. Relay trust model */}
-      <Section id="relay-trust" className="bg-fd-muted/40">
-        <SectionHeader
-          id="relay-trust-heading"
-          index="06"
-          eyebrow="Relay trust model"
-          title="The relay moves your state across the internet. It doesn't need to read it."
-          dek="Getting an encrypted revision from one machine to another over the internet requires something in the middle. Keyit's relay stores and forwards signed, encrypted revisions — it has no key that can decrypt them, and no plaintext ever reaches it."
-        />
-        <TrustBoundaryDiagram />
-      </Section>
-
-      {/* 8. Signed revisions */}
-      <Section id="signed-revisions">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-12">
+        <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
           <div>
-            <SectionHeader
-              id="signed-revisions-heading"
-              index="07"
-              eyebrow="History"
-              title="Every push is a signed, append-only revision."
-              dek="Each revision records its parent, its author device, and a non-secret summary — never values. It's real history, not an overwritten file, and it's already how every push and pull on this page works."
-            />
-            <div className="flex flex-col gap-2.5">
-              <ProtocolDefined>
-                the protocol&apos;s frozen rules describe rollback as creating a new revision rather
-                than deleting history — there&apos;s no <code>keyit revision rollback</code> command yet
-              </ProtocolDefined>
-              <ProtocolDefined>
-                conflict *detection* is real (a stale push is rejected); there&apos;s no guided
-                resolve/merge command — today&apos;s flow is pull, edit by hand, push again
-              </ProtocolDefined>
-            </div>
+            <h3 className="mb-2 font-mono text-[13px] font-medium text-fd-foreground">
+              Device identity
+            </h3>
+            <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
+              Every device generates its own Ed25519 signing key and X25519 key-agreement key on
+              first use, kept in the OS Keychain where available. There are no Keyit user
+              accounts — a device joins a project only when an existing Owner or Admin approves
+              it by device, not by email.
+            </p>
           </div>
-          <Terminal label="revision history" lines={REVISION_LINES} />
+          <div>
+            <h3 className="mb-2 font-mono text-[13px] font-medium text-fd-foreground">
+              Encrypted revisions
+            </h3>
+            <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
+              Every environment has its own random encryption key. A push encrypts the mapped
+              dotenv file with that key and appends a signed revision recording its parent and
+              author — real history, not an overwritten file.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-2 font-mono text-[13px] font-medium text-fd-foreground">
+              Explicit push &amp; pull
+            </h3>
+            <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
+              No background daemon, no invisible auto-sync. <code>status</code> and{" "}
+              <code>diff</code> show exactly what state you&apos;re in; <code>push</code> and{" "}
+              <code>pull</code> are the only two ways state moves, and a stale push is rejected
+              rather than silently overwriting someone else&apos;s change.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-2 font-mono text-[13px] font-medium text-fd-foreground">
+              Relay trust boundary
+            </h3>
+            <p className="text-[14px] leading-relaxed text-fd-muted-foreground">
+              The relay above only ever holds what&apos;s on the far side of that dashed line: an
+              encrypted, signed payload it can store and forward without being able to read it —
+              hosted or self-hosted, no exceptions.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-10">
+          <SyncFlowDiagram />
+          <Terminal label="explicit sync" lines={SYNC_LINES} />
+        </div>
+
+        <div className="mt-8 flex flex-col gap-2.5">
+          <Available>
+            device identity, push, pull, status, and diff are all real, shipped commands
+          </Available>
+          <ProtocolDefined>
+            rollback and guided conflict resolution are defined in the frozen protocol spec but
+            not yet exposed by the CLI — today&apos;s flow for a conflict is pull, edit by hand,
+            push again
+          </ProtocolDefined>
         </div>
       </Section>
 
-      {/* 9. Open source */}
-      <Section id="open-source">
-        <SectionHeader
-          id="open-source-heading"
-          index="08"
-          eyebrow="Open source"
-          title="Inspectable, not just auditable in principle."
-          dek="Keyit is source-available under a dual MIT/Apache-2.0 license. There's no separate paid tier of the protocol, and nothing here is a claim about adoption — read the code and the spec instead of taking either on faith."
-        />
-        <div className="flex flex-wrap gap-3">
-          <CTALink href={GITHUB_URL} variant="secondary">
-            GitHub
-          </CTALink>
-          <CTALink href={PROTOCOL_SPEC_URL} variant="secondary">
-            Protocol spec
-          </CTALink>
-          <CTALink href="/docs/security" variant="secondary">
-            Security model
-          </CTALink>
-          <CTALink href={CONTRIBUTING_URL} variant="secondary">
-            Contributing
-          </CTALink>
-        </div>
-      </Section>
-
-      {/* 10. Final CTA */}
+      {/* 5. Final CTA */}
       <Section id="get-started" className="pb-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2
@@ -326,9 +358,6 @@ export default function HomePage() {
             <CTALink href="/docs/getting-started/installation">Install Keyit</CTALink>
             <CTALink href="/docs/getting-started/quickstart" variant="secondary">
               Read the Quickstart
-            </CTALink>
-            <CTALink href={PROTOCOL_SPEC_URL} variant="secondary">
-              Read the Protocol
             </CTALink>
           </div>
         </div>

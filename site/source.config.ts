@@ -20,8 +20,8 @@ export default defineConfig({
     // (Shiki's own default pair) is the single most recognizable "stock
     // Fumadocs" tell — literally GitHub's own syntax palette. `min-*` is
     // Shiki's most restrained bundled pair (near-monochrome, sparing
-    // syntax color), which matches the site's Protocol Schematic /
-    // Terminal Ledger direction — see the visual-direction writeup.
+    // syntax color), which matches the site's restrained, terminal-first
+    // visual direction.
     rehypeCodeOptions: {
       themes: {
         light: "min-light",

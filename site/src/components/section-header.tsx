@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 /**
- * Shared section header for the homepage's ten sections — a small mono
- * eyebrow (numbered, since the homepage genuinely is a sequence a reader
+ * Shared section header for the homepage's numbered sections — a small
+ * mono eyebrow (numbered, since the homepage is a sequence a reader
  * moves through top to bottom) plus a heading and optional dek. Kept as
  * one component so heading level and spacing can't drift section to
  * section.
@@ -13,15 +13,17 @@ export function SectionHeader({
   eyebrow,
   title,
   dek,
+  className,
 }: {
   id: string;
   index: string;
   eyebrow: string;
   title: string;
   dek?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-8 max-w-2xl sm:mb-10">
+    <div className={`mb-8 max-w-2xl sm:mb-10 ${className ?? ""}`}>
       <div className="mb-3 flex items-baseline gap-3 font-mono text-xs tracking-wide text-fd-muted-foreground">
         <span aria-hidden>{index}</span>
         <span className="uppercase tracking-[0.08em]">{eyebrow}</span>
