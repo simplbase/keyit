@@ -1,0 +1,102 @@
+---
+title: First Project
+description: What init writes, where device identity lives, and what belongs in Git.
+---
+
+## Running init
+
+```bash
+keyit init --project-label my-project
+```
+
+`--project-label` defaults to the current directory name. This command:
+
+- creates a device identity on this machine if one doesn't already exist (reused for every future project on this machine)
+- derives a project ID and writes a signed project genesis record
+- writes `keyit.toml` in the current directory
+- writes local runtime state under your Keyit data directory
+
+It does **not** read `.env`, create an environment, encrypt a payload, or contact a relay. Run it again in an initialized directory and it fails unless you pass `--force`.
+
+## keyit.toml: the one file you commit
+
+```toml
+version = 1
+project_id = "kvp_..."
+project_label = "my-project"
+genesis_hash = "..."
+relay_url = "https://relay.keyit.sh"
+environments = []
+```
+
+<Callout type="info" title="This file is safe to commit">
+  `keyit.toml` is a locator, not a secret. It has no private key material and no dotenv values, just the project ID, a hash pinning the project's genesis record, the default relay URL, and a list of registered environment labels. Commit it.
+</Callout>
+
+Each `keyit env add <label> <path>` appends an entry (see [Environments](/docs/environments) for the full command):
+
+```toml
+[[environments]]
+environment_id = "kve_..."
+label = "development"
+local_path = ".env.local"
+```
+
+`local_path` is the default materialization target for that environment. It is committed in `keyit.toml`, so pick a repo-relative path that makes sense in every clone, usually `.env.local`. The path is not secret material, but it does reveal project shape.
+
+## Where the real state lives
+
+Nothing private belongs in the project repository. Local runtime state goes under a Keyit data directory resolved in this order:
+
+1. `KEYIT_DATA_DIR`, if set
+2. `XDG_DATA_HOME/keyit`, if `XDG_DATA_HOME` is set
+3. `$HOME/.local/share/keyit`, the default
+
+Under that directory:
+
+```text
+<data-dir>/
+  device-signing.key       # this device's Ed25519 identity, never in the repo
+  device-encryption.key    # this device's X25519 key-agreement key, never in the repo
+  projects/<project_id>/.keyit/
+    project.toml            # local summary: project id, label, relay URL
+    genesis.keyit            # signed project genesis record
+    membership/genesis.keyit # this device's signed membership record
+    environments/            # per-environment metadata, revisions, encrypted payloads
+    invites/ join-requests/ approvals/ revocations/
+```
+
+The two device keys define this machine's Keyit identity. On macOS, the default data directory uses Keychain unless you set `KEYIT_KEY_STORE=file`. Setting `KEYIT_DATA_DIR` also forces file-backed storage for that directory. Non-macOS builds use the file backend today. Either way, `keyit init` resolves this storage outside the project root; it does not write private keys into the repository.
+
+<Callout type="warn" title="Back these up separately if you care about this device's identity">
+  Losing the device keys means this machine loses the identity that was approved. A new key is a new device, which means a new join and approval flow.
+</Callout>
+
+## What to put in .gitignore
+
+Keyit does not create or edit `.gitignore`. Add this yourself before the first commit:
+
+```text
+.env
+.env.*
+!.env.example
+.keyit/
+```
+
+<Callout type="warn" title="Never commit these">
+  `.env`, `.env.local`, and any other mapped dotenv file are plaintext on disk. A local `.keyit/` directory, if one ever exists inside a project root, is local state and should stay out of Git too. `keyit.toml` is the Keyit file you commit.
+</Callout>
+
+## Commit the locator
+
+```bash
+git add keyit.toml .gitignore
+git commit -m "Add Keyit project locator"
+```
+
+## Next
+
+<Cards>
+  <Card title="Quickstart" description="Run the fake push/pull loop before real state enters the room." href="/docs/quickstart" />
+  <Card title="Concepts" description="Understand the words before you invite another device." href="/docs/concepts" />
+</Cards>

@@ -179,7 +179,7 @@ pub fn run_invite_create(options: InviteCreateOptions) -> Result<InviteCreateOut
         expires_at,
         max_uses,
         status: InviteStatus::Active,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     invite.signature = signing_keypair.sign(Invite::SIGN_LABEL, &invite);
     invite.verify_signature(&signing_keypair.public_key())?;
@@ -246,7 +246,7 @@ pub fn run_join(options: JoinOptions) -> Result<JoinOutcome, CliError> {
         requested_environment_ids: requested_environment_ids.clone(),
         device_label,
         created_at: now,
-        proof_signature: zero_signature_placeholder(),
+        proof_signature: zero_signature_field(),
     };
     request.proof_signature = signing_keypair.sign(JoinRequest::SIGN_LABEL, &request);
     request.verify_signature()?;
@@ -542,7 +542,7 @@ pub fn run_approve(options: ApproveOptions) -> Result<ApproveOutcome, CliError> 
         role,
         approved_by_device_id: device_id,
         created_at: now,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     approval.signature = signing_keypair.sign(Approval::SIGN_LABEL, &approval);
     approval.verify_signature(&signing_keypair.public_key())?;
@@ -614,7 +614,7 @@ pub fn run_revoke(options: RevokeOptions) -> Result<RevokeOutcome, CliError> {
         revoked_by_device_id: device_id,
         created_at: now,
         reason_optional: reason,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     revocation.signature = signing_keypair.sign(Revocation::SIGN_LABEL, &revocation);
     revocation.verify_signature(&signing_keypair.public_key())?;
@@ -1014,7 +1014,7 @@ fn validate_invite_for_join(
     Ok(())
 }
 
-fn zero_signature_placeholder() -> SignatureBytes {
+fn zero_signature_field() -> SignatureBytes {
     SignatureBytes::from_bytes(&[0u8; 64]).expect("64 zero bytes is a validly-shaped signature")
 }
 

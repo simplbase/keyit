@@ -1,0 +1,126 @@
+---
+title: Relay Container
+description: Docker, GHCR tags, compose, and the reverse proxy shape.
+---
+
+## Image
+
+The repository builds a relay-only image from the root `Dockerfile`. It is the same relay binary, packaged for the boring deployment path.
+
+```bash
+docker build -t keyit-relay:local .
+```
+
+It runs `keyit-relay serve --print-config` and exposes port `8787` inside the container. `--print-config` prints resolved settings before the server starts.
+
+## GHCR tags
+
+```text
+ghcr.io/<owner>/<repo>/keyit-relay:latest
+ghcr.io/<owner>/<repo>/keyit-relay:sha-<commit>
+```
+
+`pull_request` builds validate the image but are not published.
+
+## Compose
+
+This is the single-node compose shape used by the relay deployment notes in this repository:
+
+```yaml
+services:
+  keyit-relay:
+    image: ${KEYIT_RELAY_IMAGE:?set KEYIT_RELAY_IMAGE}
+    container_name: keyit-relay
+    restart: unless-stopped
+    env_file: ${KEYIT_RELAY_ENV_FILE:-.env}
+    volumes:
+      - ./data/relay:/data/relay
+    expose:
+      - "8787"
+    networks:
+      - proxy
+      - keyit-private
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/readyz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy:
+    external: true
+    name: ${SIMPLBASE_PROXY_NETWORK:-proxy}
+  keyit-private:
+    internal: true
+```
+
+Notice it only `expose`s `8787`; there is no `ports:` mapping. The relay is reachable on Docker networks, not directly on the host. Only the reverse proxy should publish anything to the internet.
+
+<Callout type="warn" title="The container runs as UID 10001">
+  The mounted data directory has to be writable by UID `10001` before the container starts, or the relay cannot write its storage root.
+</Callout>
+
+```bash
+mkdir -p data/relay backups
+sudo chown -R 10001:10001 data
+```
+
+## Environment file
+
+```bash
+KEYIT_RELAY_IMAGE=ghcr.io/simplbase/keyit-relay:latest
+SIMPLBASE_PROXY_NETWORK=proxy
+
+KEYIT_RELAY_MODE=production
+KEYIT_RELAY_ROOT=/data/relay
+KEYIT_RELAY_ADDR=0.0.0.0:8787
+KEYIT_RELAY_PUBLIC_URL=https://relay.example.com
+KEYIT_RELAY_RATE_LIMIT_PER_MINUTE=120
+```
+
+Copy from `.env.example`, then lock it down. It describes how the relay process runs.
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+See [Production](/docs/relay/production) for the full variable reference and the limit knobs this example omits.
+
+## Caddy
+
+Route the public hostname to the container over the shared proxy network.
+
+```text
+relay.example.com {
+    reverse_proxy keyit-relay:8787
+}
+```
+
+Caddy is the only thing that should expose public ports. `KEYIT_RELAY_ADDR=0.0.0.0:8787` inside the container is acceptable because `8787` is never mapped to the host; it is reachable only from containers on the same Docker network as Caddy.
+
+## Start and check
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+```bash
+curl https://relay.example.com/healthz
+curl https://relay.example.com/readyz
+curl https://relay.example.com/metrics
+```
+
+<Callout type="info" title="Current limit: single-node filesystem storage">
+  This deployment uses the filesystem-backed relay store. It is fine for one hardened node. Running more than one relay instance behind a load balancer needs a shared backend that does not exist yet. Do not scale this compose file horizontally and expect consistent state.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Production" description="Full env var reference, probes, limits, and hardening." href="/docs/relay/production" />
+  <Card title="Maintenance" description="Inspect and clean the same mounted root." href="/docs/relay/maintenance" />
+</Cards>

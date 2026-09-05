@@ -156,7 +156,7 @@ impl HashBytes {
     /// Named `_for_test` to make clear this is not how production code
     /// builds a `HashBytes`: it skips the hash computation entirely, which
     /// is only acceptable when a test needs a specific, arbitrary-looking
-    /// hash value (e.g. a placeholder parent-revision hash) rather than an
+    /// hash value (e.g. a test parent-revision hash) rather than an
     /// actual digest of some input.
     #[cfg(any(test, feature = "test-util"))]
     pub const fn new_unchecked_for_test(bytes: [u8; 32]) -> Self {

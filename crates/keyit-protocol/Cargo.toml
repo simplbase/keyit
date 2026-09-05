@@ -11,7 +11,7 @@ publish = false
 workspace = true
 
 [features]
-# Exposes the crate's `new_unchecked_for_test` placeholder constructors
+# Exposes the crate's `new_unchecked_for_test` test constructors
 # (identifiers, signature/hash/key/nonce bytes) to other crates' tests.
 # Off by default: these constructors skip validation and are only for
 # isolated test setup.

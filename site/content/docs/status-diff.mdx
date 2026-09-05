@@ -1,0 +1,54 @@
+---
+title: Status And Diff
+description: Inspect drift without printing the values everyone is trying to protect.
+---
+
+These commands are for support, review, and your own sanity. They should be safe to paste into a chat because they do not print dotenv values.
+
+## keyit status
+
+```bash
+keyit status
+keyit status development
+```
+
+Shows every mapped environment, or just one: whether the local file exists, how many keys it parses, and which revision IDs your device knows about. `latest` is the newest local revision. `local base` is what your file was last materialized from.
+
+```text
+Environment development (kve_...)
+  local path: .env.local
+  latest:     kvr_...
+  local base: kvr_...
+  state:      local file present, 4 keys parsed
+```
+
+If `latest` and `local base` match, this file is caught up with the latest local revision. If they differ, there is a revision this device knows about that has not been materialized yet.
+
+## keyit diff
+
+```bash
+keyit diff
+keyit diff development
+```
+
+Compares your local file against the latest known revision key by key: added, modified, or removed. It does not show the old value and it does not show the new one.
+
+```text
+Environment development (kve_...)
+  local path: .env.local
+  baseline:   kvr_...
+  added      NEW_FEATURE_FLAG
+  modified   API_KEY
+  removed    OLD_TOKEN
+```
+
+<Callout type="info" title="No dotenv values, ever">
+  `diff` decrypts the baseline revision locally to compare keys. If this device can pull the environment, it already has the wrapped data key it needs. The command still prints only key names and add/modify/remove status. `status` does not decrypt at all; it reads the local file's key count and revision pointers.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Revisions" description="Inspect the history behind those pointers." href="/docs/revisions" />
+  <Card title="Conflicts" description="Understand why a pull or push gets refused." href="/docs/conflicts" />
+</Cards>

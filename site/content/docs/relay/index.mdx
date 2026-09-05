@@ -1,0 +1,37 @@
+---
+title: Relay
+description: Hosted or self-hosted, the relay is transport, not trust.
+---
+
+The relay moves encrypted revisions and access records between devices. That is the job. It stores signed metadata and ciphertext, checks signatures and limits, and serves data back to devices that can prove they belong. It does not decrypt values because the protocol never gives it the key.
+
+<Callout type="warn" title="Never trust the relay, hosted or self-hosted">
+  Keyit's security model assumes the relay can be read by its operator or by someone who compromises it. That is not a dramatic marketing line. It is the design assumption. Use `relay.keyit.sh` or run your own; the protocol treats both as untrusted.
+</Callout>
+
+## Hosted or self-hosted
+
+```bash
+keyit relay check                                                 # hosted, by default
+keyit relay check --relay-url https://relay.internal.example.com  # your own
+```
+
+**Hosted**, at `https://relay.keyit.sh`, is the default after `keyit init`: no signup, no server, no ops work. Use it when you want the cheap path and the metadata exposure is acceptable.
+
+**Self-hosted** runs the same `keyit-relay` binary or container under your infrastructure. Use it when the encrypted relay data has to live somewhere specific, when compliance says so, or when you do not want our uptime in your dependency chain.
+
+Nothing about the protocol changes between the two. A command can point somewhere else with `--relay-url`; a new project can record a different default with `keyit init --relay-url`.
+
+## What it stores, and what it can't touch
+
+The filesystem store holds project and environment genesis records, invites, join requests, approvals, revocations, revision metadata, and encrypted revision payloads. That is public signed metadata or ciphertext. It never receives a plaintext dotenv value, an unwrapped data-encryption key, or a device private key. Push encrypts locally before upload. Pull decrypts locally after fetch.
+
+## Next
+
+<Cards>
+  <Card title="Hosted Relay" description="Use the default relay when speed matters more than operating a box." href="/docs/relay/hosted" />
+  <Card title="Self-Hosted" description="Run keyit-relay yourself and own the boring parts." href="/docs/relay/self-hosted" />
+  <Card title="Container" description="Docker image, compose file, and reverse-proxy routing." href="/docs/relay/container" />
+  <Card title="Production" description="Environment variables, probes, limits, and known gaps." href="/docs/relay/production" />
+  <Card title="Maintenance" description="Inspect and clean the filesystem store." href="/docs/relay/maintenance" />
+</Cards>

@@ -1,0 +1,61 @@
+---
+title: Security Model
+description: What Keyit protects, what it exposes, and what remains your job.
+---
+
+## Encrypt before transit
+
+`keyit push` reads the mapped local file, encrypts its contents with a fresh data-encryption key, wraps that key for active approved devices, signs the revision, and only then publishes. A filesystem relay directory, HTTP relay, reverse proxy, or load balancer gets ciphertext and metadata, not dotenv values.
+
+## Device identity, not accounts
+
+There is no user account, OAuth login, or email verification in Keyit. Every device has its own Ed25519 signing key pair and X25519 encryption key pair, stored outside the project repository. A laptop and a desktop are two devices with two independent approvals.
+
+Every request to a relay is signed by a device key. The relay checks the signature and public metadata; it never authenticates a person.
+
+## What the relay can see
+
+Read this as the actual trust boundary, hosted or self-hosted: the relay stores project and environment IDs, public device identities, join requests, membership/approval/revocation records, revision metadata, and encrypted payloads. It never receives a plaintext dotenv value, an unwrapped data-encryption key, or a device private key. [Relay](/docs/relay) covers hosted vs. self-hosted; the trust assumption is identical either way.
+
+<Callout type="warn" title="A relay operator can see metadata, never values">
+  Project structure, environment labels, device IDs, roles, timestamps, and revision sizes are visible to whoever runs the relay. If that shape is sensitive, encryption does not hide it.
+</Callout>
+
+## Invite, join, and approval are separate
+
+Three steps, three boundaries. An **invite** lets a device ask. A **join request** proves the asking device controls its key. An **approval** puts that device into signed access state for the requested environments. It still cannot decrypt older revisions unless a data key was already wrapped for it. The practical rule is simple: approve, then push.
+
+Full detail on each step: [Team Access](/docs/access).
+
+## Revocation stops the future, not the past
+
+`keyit revoke` removes a device from the active authorization set and marks affected environments for rotation. The next owner or admin `push` wraps keys for devices that are still active.
+
+<Callout type="warn" title="Revocation cannot erase plaintext already received">
+  If a revoked device pulled `production` last week, it may still have last week's values on disk. Revocation is forward-only. If the device might be compromised or hostile, rotate the actual secret values at their source.
+</Callout>
+
+## Reporting security issues
+
+Found a vulnerability? Report it privately through a [GitHub Security Advisory](https://github.com/simplbase/keyit/security/advisories/new), using [`SECURITY.md`](https://github.com/simplbase/keyit/blob/main/SECURITY.md) as the route. Do not open a public issue.
+
+## Keyit is not a secrets manager
+
+Keyit solves one problem: getting the same dotenv file onto a second approved machine without pasting it into Slack or committing it to Git. It is not a KMS, not a production secrets vault, and not an access-control system for running services.
+
+It does not rotate credentials, integrate with cloud IAM, provide per-secret access control inside one environment, or protect a value after it has been decrypted onto a device's disk.
+
+## What Keyit protects, and what it doesn't
+
+Protects: values in transit and at rest on the relay, from the moment `push` encrypts them until an approved device runs `pull`.
+
+Does not protect: values already decrypted onto a device's disk, values a compromised device already pulled, plaintext files you commit to Git yourself, or anything once it leaves Keyit's flow.
+
+See [Boundaries](/docs/security/boundaries) for the itemized version of this list.
+
+## Next
+
+<Cards>
+  <Card title="Boundaries" description="The concrete list of what is protected and what is not." href="/docs/security/boundaries" />
+  <Card title="Team Access" description="Invite, join, approve, push, pull, revoke." href="/docs/access" />
+</Cards>

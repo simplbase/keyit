@@ -159,7 +159,7 @@ pub fn run_push(options: PushOptions) -> Result<PushOutcome, CliError> {
         author_device_id: device_id.clone(),
         created_at: options.now,
         change_summary: options.change_summary.clone(),
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     revision.signature = signing_keypair.sign(Revision::SIGN_LABEL, &revision);
     revision.verify_signature(&signing_keypair.public_key())?;
@@ -837,7 +837,7 @@ fn revision_metadata_hash(revision: &Revision) -> HashBytes {
     canonical::canonical_hash("keyit:v1:local-revision-metadata", revision)
 }
 
-fn zero_signature_placeholder() -> SignatureBytes {
+fn zero_signature_field() -> SignatureBytes {
     SignatureBytes::from_bytes(&[0u8; 64]).expect("64 zero bytes is a validly-shaped signature")
 }
 

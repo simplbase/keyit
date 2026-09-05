@@ -1,0 +1,4 @@
+{
+  "title": "Team Access",
+  "pages": ["index", "invite", "join", "approve", "revoke"]
+}

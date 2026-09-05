@@ -1,0 +1,54 @@
+---
+title: Approve
+description: Admit a device, assign a role, then push so it can actually read.
+---
+
+Approval is roster state. It is not a secret handoff by itself.
+
+## keyit approve
+
+```bash
+keyit approve kvd_... --role member
+```
+
+Run this from an owner or admin device. It reads the pending join request for `kvd_...`, grants exactly the environments that request asked for, assigns a role, and writes a signed approval record.
+
+```text
+Approved device kvd_...
+  project:      kvp_...
+  role:         member
+  environments: 1
+  record:       <data-dir>/.../approvals/kvd_....keyit
+```
+
+Approving a device with no matching join request fails. There is nothing to approve until the device has run `keyit join`.
+
+## --role
+
+```bash
+keyit approve kvd_... --role admin
+```
+
+One of `owner`, `admin`, or `member`. Defaults to `member`. `owner` and `admin` can invite, approve, and revoke; only `owner` can create new environments with `keyit env add`.
+
+## Approval grants exactly what was requested
+
+`keyit approve` has no `--env` flag. The environments it grants are the environments in the join request, no more and no less. If a device needs another environment, make it request that environment through the invite/join path.
+
+<Callout type="warn" title="Approval alone doesn't hand over a key">
+  Approving a device adds it to the signed access state. It does not rewrite old encrypted revisions. Environment data keys are wrapped at push time, so a device approved after the last push has no wrapped key waiting. Push again after approval:
+</Callout>
+
+```bash
+keyit approve kvd_...
+keyit push development --summary "onboard new device"
+```
+
+Only after that push does the newly approved device have a revision it can decrypt with `keyit pull development`.
+
+## Next
+
+<Cards>
+  <Card title="Push & Pull" description="The push is what wraps data for active devices." href="/docs/push-pull" />
+  <Card title="Revoke" description="How future access is removed." href="/docs/access/revoke" />
+</Cards>

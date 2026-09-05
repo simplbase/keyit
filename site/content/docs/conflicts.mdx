@@ -1,0 +1,57 @@
+---
+title: Conflict Protection
+description: The two times Keyit refuses to continue, and which one you can override.
+---
+
+Keyit protects two different things: local edits you have not pushed yet, and pushes that would branch off stale state. They fail differently. That is intentional.
+
+## Pull: local changes you haven't pushed
+
+```bash
+keyit pull development
+```
+
+Pull refuses to overwrite your local file if it exists, differs from the revision being pulled, and does not match what you last pulled:
+
+```text
+error: pull would overwrite local changes at ".env.local"; rerun with --force to replace the file
+```
+
+<Callout type="warn" title="--force discards local changes, permanently">
+  `--force` overwrites the local file with the pulled revision immediately. Whatever was in `.env.local` and had not been pushed is gone. Run `keyit diff` first if you are not sure what you would lose.
+</Callout>
+
+```bash
+keyit diff development
+keyit pull development --force
+```
+
+If your local file matches what you last pulled, pull proceeds. No conflict, no `--force` needed.
+
+## Push: you're behind the latest revision
+
+```bash
+keyit push development
+```
+
+Push refuses when your local file is not based on the latest revision this device knows about. Usually that means another device pushed and you have not pulled yet:
+
+```text
+error: local file is based on kvr_A, but latest local revision is kvr_B; run `keyit pull` before pushing
+```
+
+<Callout type="info" title="There's no --force for this one">
+  Push conflicts do not have an override. Pull first, resolve differences in the dotenv file, then push again. Forking secret history silently is worse than making you stop.
+</Callout>
+
+```bash
+keyit pull development
+keyit push development --summary "merge in latest + my changes"
+```
+
+## Next
+
+<Cards>
+  <Card title="Status & Diff" description="See what is different before you decide." href="/docs/status-diff" />
+  <Card title="Revisions" description="See the history the refusal is measured against." href="/docs/revisions" />
+</Cards>

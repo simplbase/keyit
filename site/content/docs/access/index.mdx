@@ -1,0 +1,47 @@
+---
+title: Team Access
+description: How a device gets in, starts decrypting, and gets cut off later.
+---
+
+Every device on a Keyit project gets there through the same chain: **invite -> join request -> approve -> push -> pull**. No single step hands over a secret. That is the part people try to skip, and it is usually the part that matters.
+
+```bash
+keyit invite create --env development --expires-at 1735689600
+keyit join kvi_...                      # on the new device
+keyit approve kvd_...                   # on an owner/admin device
+keyit push development                  # re-wraps the key for the newly approved device
+keyit pull development                  # on the new device, now it can decrypt
+```
+
+<Callout type="warn" title="An invite is not access, and neither is an approval">
+  A joined device can decrypt nothing. An approved device can still decrypt nothing if no push has happened since approval. Environment data keys are wrapped for devices that are active at push time. Approval puts the device on the roster; the next push gives it something useful to pull.
+</Callout>
+
+## Roles
+
+Keyit has three roles. Access commands rebuild this authority locally from signed records before they do work.
+
+**Owner** - the device that ran `keyit init`, plus any device later approved with `--role owner`. Owners can invite, approve, revoke, and create environments. The genesis owner, meaning the original `keyit init` device, cannot be revoked by today's CLI.
+
+**Admin** - can invite, approve, and revoke. Admins cannot create environments today.
+
+**Member** - can use the environments it was approved for. This is the default role when `keyit approve` has no `--role`.
+
+Running an access command from a device that isn't an owner or admin fails locally, before anything reaches a relay:
+
+```text
+error: device kvd_... is not an owner or admin
+```
+
+## Devices, not people
+
+There is no user account hiding behind the CLI. Every device has its own Ed25519 signing identity and X25519 encryption identity. One person with three machines is three devices. Revoke one and the other two stay exactly where their own signed records put them.
+
+## Next
+
+<Cards>
+  <Card title="Invite" description="Create the request path. Do not mistake it for access." href="/docs/access/invite" />
+  <Card title="Join" description="Write the signed request from the new machine." href="/docs/access/join" />
+  <Card title="Approve" description="Put the device on the roster, then push again." href="/docs/access/approve" />
+  <Card title="Revoke" description="Stop future access and rotate the real credentials when needed." href="/docs/access/revoke" />
+</Cards>

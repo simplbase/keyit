@@ -4,9 +4,9 @@ Keyit is security-sensitive software. It is designed to synchronize
 private project state across approved developer machines through relay
 infrastructure that is explicitly untrusted.
 
-Keyit is currently private-beta software. It has not undergone an
-external security audit and should not be used as the only control
-protecting high-value production secrets.
+The relay is outside the trust boundary. Treat relay storage, relay logs,
+and relay operators as able to see metadata, but not plaintext dotenv
+values or unwrapped data-encryption keys.
 
 ## Reporting a Vulnerability
 

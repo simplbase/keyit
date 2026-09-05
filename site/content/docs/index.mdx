@@ -1,0 +1,50 @@
+---
+title: Stop pasting secrets
+description: The shortest honest path from one approved device to another.
+---
+
+Keyit exists because teams keep doing the same embarrassing thing: someone needs `.env.local`, so somebody pastes it into chat, a ticket, a doc, or a "temporary" file that becomes permanent.
+
+Keyit gives that file a protocol. One approved device pushes an encrypted revision. Another approved device pulls it. The relay stores ciphertext and public metadata; it never gets a plaintext value or an unwrapped data key.
+
+No accounts. No OAuth ceremony. No dashboard pretending to be the product. Identity is a device key pair generated locally the first time this machine needs Keyit state.
+
+<Callout type="warn" title="Know the boundary">
+  Keyit moves developer-machine dotenv files. It is not a runtime secrets manager, not a KMS, and not a credential-rotation system.
+</Callout>
+
+## The shortest path
+
+```bash
+brew install simplbase/tap/keyit
+keyit relay check
+keyit init --project-label my-project
+keyit env add development .env.local
+keyit push development --summary "Initial development env"
+```
+
+On another approved device:
+
+```bash
+keyit pull development
+```
+
+That's push and pull. Getting a second device approved to receive that pull is a separate step; see [Concepts](/docs/concepts) for the invite/join/approve model.
+That is the point: state moves only after the project says which devices are allowed to receive it.
+
+## Read in this order
+
+<Cards>
+  <Card title="Quickstart" description="Run the fake loop. No real secrets, no hosted relay, no excuses." href="/docs/quickstart" />
+  <Card title="Installation" description="Get the binaries onto the machine without learning a platform." href="/docs/installation" />
+  <Card title="First Project" description="What init writes, what you commit, and what stays local." href="/docs/first-project" />
+  <Card title="Concepts" description="The vocabulary behind devices, environments, revisions, invites, and relays." href="/docs/concepts" />
+</Cards>
+
+## What Keyit is not
+
+Keyit is not a cloud secrets manager, not a KMS, and not a vault replacement. It solves a narrower problem: getting the same project-local dotenv file onto another approved machine without turning Slack into your incident report.
+
+## Choose a relay
+
+Every new project defaults to the hosted relay at `https://relay.keyit.sh`. Use it when you want the cheap path: no setup, no server, just encrypted transport. Run `keyit-relay` yourself when you need control over where relay data lives. Either way, the relay is untrusted by design.

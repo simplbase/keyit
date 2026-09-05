@@ -1,0 +1,24 @@
+{
+  "pages": [
+    "---Start---",
+    "index",
+    "quickstart",
+    "installation",
+    "first-project",
+    "concepts",
+    "---Daily Use---",
+    "environments",
+    "push-pull",
+    "status-diff",
+    "revisions",
+    "conflicts",
+    "---Team Access---",
+    "access",
+    "---Relay---",
+    "relay",
+    "---Security---",
+    "security",
+    "---Reference---",
+    "reference"
+  ]
+}

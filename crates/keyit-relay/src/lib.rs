@@ -2157,7 +2157,7 @@ impl RelaySignedRequestEnvelope {
             signing_public_key,
             created_at: input.created_at,
             nonce: input.nonce,
-            signature: zero_signature_placeholder(),
+            signature: zero_signature_field(),
         };
         let mut envelope = Self {
             auth,
@@ -3031,7 +3031,7 @@ fn decode_hex(value: &str, field: &str) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("{field} is not valid lowercase hex: {e}"))
 }
 
-fn zero_signature_placeholder() -> SignatureBytes {
+fn zero_signature_field() -> SignatureBytes {
     SignatureBytes::from_bytes(&[0u8; 64]).expect("64 zero bytes is a validly-shaped signature")
 }
 
@@ -3102,7 +3102,7 @@ mod tests {
             project_label: "relay-test".to_string(),
             default_relay_url: "http://127.0.0.1:7878".to_string(),
             canonicalization_version: 1,
-            signature: zero_signature_placeholder(),
+            signature: zero_signature_field(),
         };
         project.signature = context
             .signing_keypair
@@ -3157,7 +3157,7 @@ mod tests {
             author_device_id: device_id.clone(),
             created_at: Timestamp::from_unix_seconds(1_755_878_500),
             change_summary: None,
-            signature: zero_signature_placeholder(),
+            signature: zero_signature_field(),
         };
         revision.signature = signing_keypair.sign(Revision::SIGN_LABEL, &revision);
         let metadata = format!(

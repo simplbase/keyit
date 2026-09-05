@@ -35,9 +35,8 @@ pub struct ProjectGenesis {
     /// Default relay URL. Configuration, not a trust anchor: see
     /// Frozen rule 12 in "Project Genesis".
     pub default_relay_url: String,
-    /// Version of the (currently unspecified) canonicalization rules
-    /// used to derive `project_id` from this document. Placeholder until
-    /// the canonicalization specification exists.
+    /// Version of the canonicalization rules used to derive `project_id`
+    /// from this document.
     pub canonicalization_version: u32,
     /// Signature over the rest of this document by the creator device's
     /// signing key.

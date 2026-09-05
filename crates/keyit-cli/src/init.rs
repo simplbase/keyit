@@ -153,7 +153,7 @@ pub fn run_init(options: InitOptions) -> Result<InitOutcome, CliError> {
         project_label: project_label.clone(),
         default_relay_url: default_relay_url.clone(),
         canonicalization_version: 0,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     project_genesis.signature = device_keypair.sign(ProjectGenesis::SIGN_LABEL, &project_genesis);
     project_genesis.verify_signature()?;
@@ -164,7 +164,7 @@ pub fn run_init(options: InitOptions) -> Result<InitOutcome, CliError> {
         role: Role::Owner,
         approved_by: ApprovalSource::Genesis,
         created_at: now,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     membership_genesis.signature =
         device_keypair.sign(MembershipGenesis::SIGN_LABEL, &membership_genesis);
@@ -185,13 +185,13 @@ pub fn run_init(options: InitOptions) -> Result<InitOutcome, CliError> {
     })
 }
 
-/// A structurally-valid signature placeholder, used only to give the
-/// record struct a `SignatureBytes` value to hold between
+/// A structurally-valid zero signature, used only to give the record
+/// struct a `SignatureBytes` value to hold between
 /// construction and the real [`SigningKeyPair::sign`](keyit_protocol::signing::SigningKeyPair::sign)
 /// call a few lines later (signing does not read the `signature` field
-/// so the placeholder value never affects what gets signed). Always
+/// so this value never affects what gets signed). Always
 /// overwritten before the record is used or written anywhere.
-fn zero_signature_placeholder() -> SignatureBytes {
+fn zero_signature_field() -> SignatureBytes {
     SignatureBytes::from_bytes(&[0u8; 64]).expect("64 zero bytes is a validly-shaped signature")
 }
 

@@ -1,0 +1,67 @@
+---
+title: Self-Hosted Relay
+description: Run keyit-relay directly and take responsibility for the box around it.
+---
+
+Self-hosting does not make the relay trusted. It only changes who operates the untrusted storage.
+
+## keyit-relay serve
+
+```bash
+keyit-relay serve --root /var/lib/keyit-relay
+```
+
+`--root` is the one required input: a filesystem directory the relay owns for signed records, nonces, locks, metadata, and encrypted payloads. Everything else has a default unless production mode says otherwise.
+
+```bash
+keyit-relay serve --root /var/lib/keyit-relay --print-config
+```
+
+```text
+relay root:       /var/lib/keyit-relay
+relay bind addr:  127.0.0.1:8787
+relay mode:       dev
+relay public URL: not set
+health check:     /healthz
+readiness check:  /readyz
+```
+
+`--print-config` prints the resolved configuration before serving. It is for checking what the process is about to run with, not for a dry-run command that exits.
+
+## Root, address, and public URL
+
+| Flag | Env var | Default |
+| --- | --- | --- |
+| `--root` | `KEYIT_RELAY_ROOT` | none, required |
+| `--addr` | `KEYIT_RELAY_ADDR` | `127.0.0.1:8787` |
+| `--public-url` | `KEYIT_RELAY_PUBLIC_URL` | none |
+| `--mode` | `KEYIT_RELAY_MODE` | `dev` |
+
+```bash
+keyit-relay serve \
+  --root /var/lib/keyit-relay \
+  --addr 0.0.0.0:8787 \
+  --public-url https://relay.example.com \
+  --mode production
+```
+
+<Callout type="warn" title="keyit-relay does not terminate TLS">
+  There is no TLS termination in `keyit-relay`; the binary serves HTTP. Bind it to loopback or a private network and put Caddy, nginx, a load balancer, or ingress in front. `--mode production` requires an absolute `--root` and an `https://` public URL, but that is a configuration check. Your proxy still has to do the TLS work.
+</Callout>
+
+## dev vs. production mode
+
+`--mode dev` is the default and is meant for local testing: relative roots are fine, `--public-url` is optional. `--mode production` refuses to start unless `--root` is absolute and `--public-url` starts with `https://`.
+
+```text
+error: production relay root must be an absolute path
+error: production relay requires --public-url or KEYIT_RELAY_PUBLIC_URL
+error: production relay public URL must start with https://
+```
+
+## Next
+
+<Cards>
+  <Card title="Container" description="Same binary, packaged for a reverse-proxy setup." href="/docs/relay/container" />
+  <Card title="Production" description="The environment variables and hardening notes operators need." href="/docs/relay/production" />
+</Cards>

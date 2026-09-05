@@ -1,0 +1,62 @@
+---
+title: Join
+description: Write the signed request from the new device.
+---
+
+Joining is the new device proving "I hold this device key and I am asking for these environments." That is all. It is not access yet.
+
+## keyit join
+
+```bash
+keyit join kvi_...
+```
+
+Run this on the new device. It writes a signed join request locally and, if the project has an HTTP relay configured, publishes that request for an owner or admin to fetch.
+
+```text
+Created join request for kvd_...
+  project:      kvp_...
+  invite:       kvi_...
+  environments: 1
+  record:       <data-dir>/.../join-requests/kvd_....keyit
+```
+
+A join request does not grant access. It puts this device in line for [approval](/docs/access/approve).
+
+## Invite ID vs. bundle path
+
+The same argument accepts either form. Keyit treats a valid `kvi_...` string as an invite ID; anything else is handled as a bundle path.
+
+```bash
+keyit join kvi_2f8a...              # fetches the invite from the configured relay
+keyit join ./team-invite.bundle     # reads everything from the file, no relay contact
+```
+
+Use the bundle path when the new device needs to bootstrap from a file. Use the ID when the invite record is already available from the configured relay.
+
+## --env
+
+```bash
+keyit join kvi_... --env development --env staging
+```
+
+Repeatable and limited by the invite. Asking for an environment the invite does not cover fails locally.
+
+<Callout type="info" title="Leaving --env off requests everything the invite allows">
+  Omit `--env` and the join request asks for every environment the invite allows. If the invite covers `development`, `staging`, and `production`, an unscoped `keyit join` requests all three. Pass `--env` when you want less.
+</Callout>
+
+## --device-label
+
+```bash
+keyit join kvi_... --env development --device-label "kiruthik-macbook"
+```
+
+Optional and human-readable. It is recorded on the join request so the approver can tell which physical machine is asking. The CLI defaults to `local-device`; that default gets useless the moment two people are onboarding.
+
+## Next
+
+<Cards>
+  <Card title="Approve" description="What an owner or admin runs after the request exists." href="/docs/access/approve" />
+  <Card title="Team Access overview" description="The full invite, join, approve, push, pull flow." href="/docs/access" />
+</Cards>

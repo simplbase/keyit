@@ -1,7 +1,7 @@
 # Pins the toolchain channel used for local development and CI so that
 # `cargo build`, `cargo fmt`, and `cargo clippy` behave identically
-# everywhere. Once Keyit has a release cadence, consider pinning an exact
-# patch version (e.g. "1.95.0") here for full build determinism.
+# everywhere. Pin an exact patch version here when release builds need
+# byte-for-byte toolchain determinism.
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]

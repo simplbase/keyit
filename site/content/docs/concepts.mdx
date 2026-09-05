@@ -1,0 +1,59 @@
+---
+title: Concepts
+description: The few nouns Keyit uses instead of pretending secrets are just files.
+---
+
+Keyit is easier to reason about when you stop thinking in accounts and start thinking in devices, environments, and revisions.
+
+## Device
+
+Identity in Keyit is a machine, not a person, email address, or workspace login. Each device has two local key pairs: Ed25519 for signing actions and X25519 for wrapping and unwrapping environment data keys. The same device identity is reused across projects on that machine.
+
+Your laptop and your desktop are two separate devices, even if you're the only one who uses both. A project owner has to approve each one individually.
+
+## Project
+
+A project is one repository's Keyit identity: a signed genesis record, a project ID (`kvp_...`), a label, a default relay URL, and environment registrations. `keyit init` creates it. `keyit.toml` is a locator you commit; the fuller signed state lives in the local Keyit data directory. See [First Project](/docs/first-project) for the exact layout.
+
+## Environment
+
+A project can have more than one environment: `development`, `staging`, `production`, or whatever your team actually uses. Each environment maps to one dotenv-style file on this machine and has its own access scope plus encrypted revision history. A device can be approved for one environment without getting all of them. See [Environments](/docs/environments) for `env add` and `env list`.
+
+## Revision
+
+Every `keyit push` creates a revision: dotenv contents encrypted, signed, and appended to that environment's chain. Comments, blank lines, and grouping survive materialization because developers still have to read these files. `keyit revision list` shows IDs, timestamps, authors, and summaries, not values. See [Revisions](/docs/revisions) and [Push & Pull](/docs/push-pull).
+
+## Invite
+
+An invite is a signed, time-bounded, use-limited request path created by an owner or admin. It can be shared as an ID when the relay has the record, or as a bundle when a new checkout needs enough public project state to bootstrap.
+
+<Callout type="warn" title="An invite is not access">
+  An invite lets a device ask. It does not decrypt anything. An owner or admin still has to approve the device, and a later push has to wrap environment data for that approved device before it can pull useful state.
+</Callout>
+
+## Relay
+
+The relay is the untrusted server that stores and forwards encrypted revisions plus access records. "Untrusted" is not branding. It is the design rule: the relay may validate signed requests and public metadata, but it must not need plaintext dotenv values or unwrapped keys.
+
+Every project defaults to `https://relay.keyit.sh`. Use the hosted relay when you want less work. Self-host the same `keyit-relay` binary when policy, budget, or paranoia says encrypted data should live on your box. Either way, treat relay storage as visible to whoever operates it: encrypted, but not invisible.
+
+## Role
+
+Every approved device on a project has exactly one role:
+
+- **Owner** - the project creator, or someone granted equivalent standing. Full authority, including approving and revoking other devices.
+- **Admin** - trusted to approve joins and revoke access, without necessarily having full owner standing.
+- **Member** - has whatever project and environment access it was granted, but can't approve or revoke anyone else.
+
+Roles are assigned at approval time with `keyit approve <device-id> --role <role>`. The parser accepts `owner`, `admin`, and `member`; anything else is rejected.
+
+<Callout type="warn" title="Revocation is not erasure">
+  Revoking a device stops future access and marks affected environments for rotation on the next push. It cannot un-send values the device already decrypted. If that matters, rotate the real credentials too.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Quickstart" description="Use the words in a fake project before real credentials appear." href="/docs/quickstart" />
+  <Card title="First Project" description="See what init writes and why only keyit.toml belongs in Git." href="/docs/first-project" />
+</Cards>

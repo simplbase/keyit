@@ -1,0 +1,87 @@
+---
+title: Relay Maintenance
+description: Inspect the filesystem store and clean up the files that should expire.
+---
+
+If you run the relay, you own the storage. Do not discover a bad restore during an incident.
+
+## keyit-relay maintenance inspect
+
+```bash
+keyit-relay maintenance inspect --root /var/lib/keyit-relay
+```
+
+Reports object counts and checks that revision metadata matches its stored path and still has a matching encrypted payload sidecar. Run it before serving from a restored backup.
+
+```text
+relay root:      /var/lib/keyit-relay
+projects:        3
+environments:    7
+revisions:       142
+payloads:        142
+nonces:          18
+bytes:           4213880
+integrity clean: yes
+malformed revisions: 0
+missing payloads:     0
+```
+
+`malformed revisions`, `missing payloads`, or bad latest pointers above zero mean the store is not clean. Do not point live traffic at that root until you understand why.
+
+## keyit-relay maintenance cleanup
+
+```bash
+keyit-relay maintenance cleanup --root /var/lib/keyit-relay --dry-run
+```
+
+Removes expired replay-nonce files, leftover temporary files, and stale publish locks. Run with `--dry-run` first so the command reports what it would remove before touching the store.
+
+```text
+relay root:        /var/lib/keyit-relay
+dry run:           yes
+nonce files:       4
+temporary files:   0
+stale lock files:  1
+bytes removable:   1024
+```
+
+Drop `--dry-run` once the numbers look right.
+
+```bash
+keyit-relay maintenance cleanup --root /var/lib/keyit-relay
+```
+
+## TTL flags
+
+```bash
+keyit-relay maintenance cleanup --root /var/lib/keyit-relay \
+  --nonce-ttl-seconds 604800 \
+  --temp-ttl-seconds 86400 \
+  --stale-lock-ttl-seconds 900
+```
+
+Those values are the built-in defaults: 7 days for nonces, 1 day for temp files, and 15 minutes for stale locks. Only pass them when you want different retention.
+
+## Run it on a schedule
+
+Cleanup does not run itself. Put it in cron or a systemd timer against the same root your relay serves from.
+
+```bash
+0 * * * * keyit-relay maintenance cleanup --root /var/lib/keyit-relay
+```
+
+Hourly is enough for the default TTLs.
+
+## In a container
+
+```bash
+docker compose exec keyit-relay keyit-relay maintenance inspect --root /data/relay
+docker compose exec keyit-relay keyit-relay maintenance cleanup --root /data/relay --dry-run
+```
+
+## Next
+
+<Cards>
+  <Card title="Production" description="Backups, limits, probes, and the gaps maintenance does not solve." href="/docs/relay/production" />
+  <Card title="Relay overview" description="Hosted vs. self-hosted from the top." href="/docs/relay" />
+</Cards>

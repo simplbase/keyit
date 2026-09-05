@@ -1,0 +1,106 @@
+---
+title: Relay In Production
+description: The production knobs, probes, and gaps operators should not ignore.
+---
+
+Production relay work is ordinary operations work. Terminate TLS in front of `keyit-relay`, bind the relay to loopback or a private network, put `KEYIT_RELAY_ROOT` on durable backed-up storage, and wire `/healthz`, `/readyz`, and `/metrics` into monitoring.
+
+## Environment variables
+
+```bash
+export KEYIT_RELAY_MODE=production
+export KEYIT_RELAY_ROOT=/var/lib/keyit-relay
+export KEYIT_RELAY_ADDR=127.0.0.1:8787
+export KEYIT_RELAY_PUBLIC_URL=https://relay.example.com
+
+export KEYIT_RELAY_RATE_LIMIT_PER_MINUTE=120
+export KEYIT_RELAY_MAX_HEADER_BYTES=65536
+export KEYIT_RELAY_MAX_BODY_BYTES=2097152
+export KEYIT_RELAY_MAX_AUTHORIZATION_BYTES=524288
+export KEYIT_RELAY_MAX_REQUEST_PAYLOAD_BYTES=1572864
+export KEYIT_RELAY_MAX_REVISION_METADATA_BYTES=262144
+export KEYIT_RELAY_MAX_ENCRYPTED_PAYLOAD_BYTES=1048576
+export KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT=10000
+
+# Shared-relay limits. Leave unset or 0 to run unrestricted.
+export KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE=3
+export KEYIT_RELAY_MAX_ENVIRONMENTS_PER_PROJECT=3
+export KEYIT_RELAY_MAX_DEVICES_PER_PROJECT=5
+export KEYIT_RELAY_INACTIVE_RETENTION_DAYS=30
+```
+
+`--mode production` refuses to start without an absolute `--root` and an `https://` `--public-url`. `keyit-relay` does not terminate TLS; this check only prevents obviously wrong public configuration.
+
+## Shared vs. self-hosted limits
+
+Five limit knobs ship as plain runtime configuration: no license checks, no phone-home, read once at process start.
+
+| Variable | Caps | Default |
+| --- | --- | --- |
+| `KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE` | Projects one creator device may publish here | unlimited |
+| `KEYIT_RELAY_MAX_ENVIRONMENTS_PER_PROJECT` | Environments per project | unlimited |
+| `KEYIT_RELAY_MAX_DEVICES_PER_PROJECT` | Active devices per project | unlimited |
+| `KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT` | Revision objects per environment | `10000` |
+| `KEYIT_RELAY_INACTIVE_RETENTION_DAYS` | Days idle before a project is eligible for cleanup | disabled |
+
+Leaving a variable unset keeps the table's default. Setting it to `0` disables that limit. A positive integer enforces that cap. An unparsable value fails startup instead of silently falling back.
+
+`KEYIT_RELAY_MAX_REVISIONS_PER_ENVIRONMENT` is the one exception: unset means `10000`, not unlimited. Set it to `0` explicitly if you want it uncapped.
+
+<Callout type="info" title="INACTIVE_RETENTION_DAYS doesn't delete anything yet">
+  It is recorded and shown by `--print-config` for documentation purposes only. No background job acts on it today. See Known Limits below.
+</Callout>
+
+The example values above (`3` / `3` / `5` / `10000` / `30`) are the shared-relay policy values documented in this repository. The CLI does not enforce them locally; it surfaces the relay's error when a configured limit is hit.
+
+## Service command
+
+```bash
+keyit-relay serve --print-config
+```
+
+or the equivalent flags:
+
+```bash
+keyit-relay serve \
+  --mode production \
+  --root /var/lib/keyit-relay \
+  --addr 127.0.0.1:8787 \
+  --public-url https://relay.example.com \
+  --rate-limit-per-minute 120
+```
+
+## Probes
+
+```bash
+curl http://127.0.0.1:8787/healthz
+curl http://127.0.0.1:8787/readyz
+curl http://127.0.0.1:8787/metrics
+```
+
+`/healthz` proves the process answers HTTP. `/readyz` also checks that the storage root can be created and written. `/metrics` returns in-process text counters: requests, bytes, publishes, fetches, status counts, and rate-limit hits.
+
+## Storage hardening
+
+The filesystem backend enforces maximum revision metadata size, maximum encrypted payload size, maximum revisions per project/environment, the account limits above, atomic writes through same-directory temp files and rename, and publish locks around concurrent writes.
+
+Back up the entire `KEYIT_RELAY_ROOT`. There is no revision garbage collection or retention window yet.
+
+## Abuse controls
+
+The relay rejects oversized headers, bodies, authorization envelopes, relay payload envelopes, revision metadata, and encrypted payloads. It also applies a fixed-window rate limit per peer IP. For internet exposure, put the usual grown-up controls in front of it: TLS termination, request timeouts, connection limits, body-size limits at or below `KEYIT_RELAY_MAX_BODY_BYTES`, upstream abuse protection, and access logs that do not record bodies.
+
+## Known limits
+
+Filesystem storage, not object-store or database-backed storage. No revision retention or garbage collection policy. `KEYIT_RELAY_INACTIVE_RETENTION_DAYS` is configuration only; no automated deletion runs yet. No multi-instance coordination for publish locks or nonce replay state, so do not run two instances against the same root behind a load balancer. No durable or shared metrics. No automated backup/restore testing. No hosted-relay incident runbook yet.
+
+<Callout type="info" title="A hardened alpha relay, not the final hosted service">
+  This is good enough for controlled internal projects and a self-hosted alpha. It is not a final hosted platform. Treat the gaps above as engineering constraints, not fine print.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Maintenance" description="Inspect storage before trusting it, then clean temporary debris." href="/docs/relay/maintenance" />
+  <Card title="Container" description="Run this configuration behind a reverse proxy." href="/docs/relay/container" />
+</Cards>

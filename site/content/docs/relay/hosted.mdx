@@ -1,0 +1,47 @@
+---
+title: Hosted Relay
+description: "relay.keyit.sh is the cheap path: zero setup, untrusted by design."
+---
+
+Hosted relay is for getting moving. It is not a reason to stop thinking.
+
+## Using it
+
+You are already using it unless you opted out. Every project defaults to `https://relay.keyit.sh` unless `keyit init --relay-url ...` records something else.
+
+```bash
+keyit relay check
+```
+
+```text
+Relay https://relay.keyit.sh
+  health:    HTTP 200
+  readiness: HTTP 200
+  status:    ready
+```
+
+No signup. No API key. No account. Relay requests are authorized by signed Keyit records, not by a SaaS login.
+
+## When hosted is enough
+
+Use hosted for solo work, small teams, and projects where shared infrastructure is acceptable after you understand the metadata it can see. The upside is obvious: no server to patch, no storage to back up, no `/readyz` page at 3am.
+
+## When to self-host instead
+
+Move to your own relay when any of these actually apply: policy says relay data must live somewhere you control, you need your own backup and limit policy, or you do not want `relay.keyit.sh` in the dependency chain. If none of that applies, do not cosplay as an infrastructure team. Use the hosted relay and ship.
+
+The switch is a flag, not a migration:
+
+```bash
+keyit push development --relay-url https://relay.internal.example.com
+keyit pull development --relay-url https://relay.internal.example.com
+```
+
+Or set it once at `keyit init --relay-url ...` for future commands in that project.
+
+## Next
+
+<Cards>
+  <Card title="Self-Hosted" description="Run keyit-relay yourself when control is worth the work." href="/docs/relay/self-hosted" />
+  <Card title="Relay overview" description="What the relay stores and what it cannot touch." href="/docs/relay" />
+</Cards>

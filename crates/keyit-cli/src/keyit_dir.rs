@@ -1745,7 +1745,7 @@ mod tests {
     // validation at construction, but `ProjectGenesisToml::to_record`/
     // `MembershipGenesisToml::to_record` round-trip through
     // `ProjectId::parse`/`DeviceId::parse`, which do enforce the real
-    // exact-length identifier shape. A short placeholder body like
+    // exact-length identifier shape. A short test body like
     // `"9e107d9d372bb682"` (fine for tests that never re-parse it) fails
     // that parse, so these fixtures need to already be shaped like real
     // identifiers.

@@ -104,7 +104,7 @@ mod tests {
             parent_revision_id: parent.clone(),
             parent_revision_hash: parent.map(|_| HashBytes::new_unchecked_for_test([4u8; 32])),
             payload_hash: HashBytes::new_unchecked_for_test([5u8; 32]),
-            encrypted_payload_ref: "relay://placeholder".to_string(),
+            encrypted_payload_ref: "relay://test-payload".to_string(),
             author_device_id: DeviceId::new_unchecked_for_test("d41d8cd98f00b204"),
             created_at: Timestamp::from_unix_seconds(1_755_878_400),
             change_summary: Some("initial revision".to_string()),

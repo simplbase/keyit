@@ -1,0 +1,63 @@
+---
+title: Boundaries
+description: The line between Keyit's job and your team's job.
+---
+
+Security tools fail when they pretend their boundary is bigger than it is. This is Keyit's boundary.
+
+## Safe to commit vs. never commit
+
+Safe to commit: `keyit.toml` (project ID, pinned genesis hash, relay URL, environment labels, no values), `.env.example` with example values, and ordinary project files.
+
+Never commit: `.env`, `.env.local`, or whatever path you mapped with `keyit env add`. That file holds plaintext once real values land in it. Also keep local `.keyit/` runtime state and device private keys out of the repository.
+
+<Callout type="warn" title="Keyit does not create .gitignore for you">
+  Add the exclusions yourself before the first commit:
+</Callout>
+
+```bash
+printf '.env\n.env.*\n!.env.example\n' >> .gitignore
+```
+
+## What relay metadata reveals
+
+Whoever operates the relay can see project and environment IDs, environment labels, device IDs and roles, join/approval/revocation history, revision timestamps, and revision sizes. If you name an environment `prod-stripe-keys`, that string is visible. They cannot see dotenv values, unwrapped data-encryption keys, or device private keys.
+
+Metadata privacy is a real property Keyit does not currently provide. If the shape of your project is sensitive, self-hosting reduces who sees that shape. It does not eliminate the exposure.
+
+## Invite bundles are private onboarding material, not public keys
+
+An invite bundle is a signed TOML file that lets a device bootstrap join state without first fetching from a relay. Treat it like private onboarding material: send it directly to the person joining.
+
+<Callout type="warn" title="A bundle discloses your current roster">
+  Every invite bundle embeds the project's join-request, approval, and revocation history as of the moment it was created: device IDs, roles, and environment assignments. Not a decryption key, but real information about who has access to what.
+</Callout>
+
+## Revocation is forward-only
+
+Revoking a device stops it from decrypting future revisions after the next push. It does not delete files already on that device's disk, invalidate values already decrypted, or prove the device did not keep a copy.
+
+If a device is lost, stolen, or compromised: revoke it in Keyit, then rotate the actual secret values at their source. The old values stay valid until you do that.
+
+## Local plaintext is always local plaintext
+
+The moment `keyit pull` writes a dotenv file to disk, that file is protected by the machine, not by Keyit: OS permissions, disk encryption, endpoint posture, and user behavior. Keyit's guarantees are about state moving between devices.
+
+## Keyit vs. a cloud secret manager
+
+Keyit is not a replacement for AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault, or similar. Those systems handle runtime injection, fine-grained IAM policy, audit logs, rotation, and compliance evidence.
+
+Keyit handles one narrower job: moving a dotenv file from one approved developer machine to another without Git, email, or chat. Use a real secrets manager for production runtime secrets.
+
+## What's your job, not Keyit's
+
+Keyit cannot stop you from committing a plaintext file if you skip `.gitignore`, stop a compromised approved device from reading everything it can pull, enforce offboarding discipline, or verify that the values you pushed are the values you meant to push.
+
+Those are process, not protocol. Your actual posture depends on revoking devices during offboarding, keeping `--env` scoped, and treating every approved device as capable of reading everything it was approved for until revoked and rotated.
+
+## Next
+
+<Cards>
+  <Card title="Security overview" description="Return to the top-level model." href="/docs/security" />
+  <Card title="Team Access" description="See the device lifecycle behind these boundaries." href="/docs/access" />
+</Cards>

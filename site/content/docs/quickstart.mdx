@@ -1,0 +1,76 @@
+---
+title: Quickstart
+description: Run the complete fake push/pull loop before you point Keyit at anything real.
+---
+
+This walkthrough uses fake values and a local directory as the relay. Nothing contacts `relay.keyit.sh`. Nothing leaves your machine. That is deliberate: learn the shape before you trust the tool.
+
+## Install
+
+```bash
+brew install simplbase/tap/keyit
+```
+
+Other install paths: [Installation](/docs/installation).
+
+## Start a throwaway project
+
+```bash
+mkdir /tmp/keyit-demo && cd /tmp/keyit-demo
+keyit init --project-label demo
+```
+
+`keyit init` writes `keyit.toml`, creates or reuses this machine's device keys, and writes signed project state under the local Keyit data directory. It does not read `.env`, create environments, encrypt payloads, or contact a relay. The source code is boring about this on purpose.
+
+## Add a fake environment
+
+```bash
+printf 'API_KEY=demo-token\nLOG_LEVEL=debug\n' > .env.local
+keyit env add development .env.local
+```
+
+<Callout type="warn" title="Fake values only">
+  `.env.local` is plaintext on disk the moment you create it. Do not paste real credentials into a docs-page demo.
+</Callout>
+
+## Push through a local relay directory
+
+Point `push` at a plain directory instead of a real relay:
+
+```bash
+mkdir /tmp/keyit-relay
+keyit push development --relay-dir /tmp/keyit-relay --summary "quickstart demo"
+```
+
+This is the first command in the flow that reads dotenv values. It encrypts `.env.local`, writes a local revision, publishes opaque bytes into `/tmp/keyit-relay`, and prints metadata. Dotenv values do not appear in the output.
+
+## Pull it back
+
+```bash
+keyit pull development --relay-dir /tmp/keyit-relay
+```
+
+<Callout type="warn" title="--force overwrites local changes">
+  Pull refuses to replace `.env.local` if it has changed locally since the last pull. Only add `--force` when you intend to throw those local changes away.
+</Callout>
+
+## Inspect without leaking values
+
+```bash
+keyit whoami
+keyit env list
+keyit status development
+```
+
+These print device IDs, environment IDs, and local paths, never dotenv contents. Safe to paste into a bug report.
+`diff` can decrypt the latest local baseline so it can compare keys, but it still prints key names only. That boundary matters.
+
+## Next
+
+<Cards>
+  <Card title="First Project" description="What init writes, and why keyit.toml is the only Keyit file you commit." href="/docs/first-project" />
+  <Card title="Concepts" description="The words Keyit uses when it refuses to do something dangerous." href="/docs/concepts" />
+  <Card title="Push & Pull" description="The real sync loop, including summaries, relays, and refusal cases." href="/docs/push-pull" />
+</Cards>
+
+This flow used one device and a fake relay directory. A second real device needs the invite, join, approve, and later push sequence. That is where the trust model starts doing actual work.

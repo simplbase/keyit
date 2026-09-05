@@ -43,10 +43,7 @@ Two ways to run it, same untrusted design either way:
 The relay never receives plaintext dotenv values or unwrapped
 encryption keys, hosted or self-hosted.
 
-## Status
-
-Keyit is early software and should be treated as private beta. The core
-project flow is implemented and usable for controlled internal projects:
+## What Ships
 
 - project initialization
 - environment registration
@@ -56,8 +53,8 @@ project flow is implemented and usable for controlled internal projects:
 - local conflict and overwrite protection
 - release binaries and relay container images
 
-Keyit has not yet undergone an external security audit. Do not use it as
-the only control protecting high-value production secrets.
+Keyit is for developer-machine dotenv state. It is not a cloud secrets
+manager, runtime injector, KMS, or credential-rotation system.
 
 ## Install
 

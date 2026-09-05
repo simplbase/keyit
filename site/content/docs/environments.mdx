@@ -1,0 +1,74 @@
+---
+title: Environments
+description: Register the dotenv files Keyit is allowed to move.
+---
+
+An environment is a named dotenv file plus its own access scope and revision history. Keep that model tight. If `development` and `production` have different blast radius, they should not share the same Keyit environment.
+
+## Add an environment
+
+```bash
+keyit env add development .env.local
+```
+
+`keyit env add <label> <path>` creates a signed environment record and maps it to a local file path. It does not read `<path>`, so the file does not need to exist yet. It does not publish anything and it does not contact a relay.
+
+<Callout type="warn" title="Only the genesis owner can add environments today">
+  The current CLI only lets the genesis owner create environments. If this device joined later, do not fight the tool; ask the owner device to add the environment.
+</Callout>
+
+Add as many as the project needs:
+
+```bash
+keyit env add staging .env.staging.local
+keyit env add production .env.production.local
+```
+
+Labels must be unique per project and cannot contain `/` or `\`.
+
+## List environments
+
+```bash
+keyit env list
+```
+
+```text
+Project kvp_...
+
+Environment development (kve_...)
+  local path:   .env.local
+  latest:       kvr_...
+  materialized: kvr_...
+
+Environment staging (kve_...)
+  local path:   .env.staging.local
+  latest:       none
+  materialized: none
+```
+
+`latest` is the newest encrypted revision this device knows locally. `materialized` is the revision your local file was last written from. They differ after a new revision arrives and before you pull it. See [Status & Diff](/docs/status-diff).
+
+## Labels vs kve_ IDs
+
+Every command that takes an environment argument accepts either the label (`development`) or the full `kve_...` ID: `push`, `pull`, `status`, `diff`, and `revision list`. Use the label day to day. Use the ID when output has to be unambiguous.
+
+## Local path hints
+
+The path you give `env add` is recorded in the signed environment record, written to this device's local mapping, and copied into the committed `keyit.toml` locator. In today's CLI, other clones inherit the same default path. Pick a repo-relative path the team can live with, usually `.env.local`.
+
+That path is still only a materialization target, not protocol identity. The environment is identified by its `kve_...` ID.
+
+## .env.local vs .env.example
+
+Keyit pushes and pulls whichever file you mapped. That is your real local secret file, `.env.local` by convention. Keep a separate `.env.example` in the repo with the same keys and fake values, so a clone knows the shape before it gets approved.
+
+<Callout type="warn" title="Never commit the mapped file">
+  Whatever path you passed to `env add` holds plaintext once real values land in it. Put it in `.gitignore` before somebody has a bad afternoon. See [First Project](/docs/first-project) for the exclusions.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Push & Pull" description="Move this environment without giving the relay the values." href="/docs/push-pull" />
+  <Card title="Status & Diff" description="Check drift without turning your terminal into a leak." href="/docs/status-diff" />
+</Cards>

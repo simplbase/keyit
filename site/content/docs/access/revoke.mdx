@@ -1,0 +1,68 @@
+---
+title: Revoke
+description: Stop future access. Rotate real credentials when the risk is real.
+---
+
+Revocation is forward-looking. It changes what future pushes wrap for. It does not rewrite the past.
+
+## keyit revoke
+
+```bash
+keyit revoke kvd_...
+```
+
+Run this from an owner or admin device. It writes a signed revocation record and marks affected environments as needing rotation.
+
+```text
+Revoked device kvd_...
+  project:      kvp_...
+  environments: 1
+  record:       <data-dir>/.../revocations/kvd_....keyit
+  rotation:     required; run `keyit push <environment>` for each affected environment
+```
+
+<Callout type="warn" title="Revocation is not retroactive">
+  Revocation prevents future access after the next owner or admin push. It cannot erase plaintext or wrapped keys a device already received. If that device pulled `production` last week, last week's values may still be on disk. If the device is lost, compromised, or hostile, rotate the actual credentials at the source.
+</Callout>
+
+## --env
+
+```bash
+keyit revoke kvd_... --env production
+```
+
+Repeatable and scoped to the environments this revocation affects.
+
+<Callout type="info" title="Leaving --env off revokes everything the device currently has">
+  Omit `--env` and the revocation affects every environment the device is currently approved for. Pass `--env` when you mean only one environment.
+</Callout>
+
+## --reason
+
+```bash
+keyit revoke kvd_... --reason "laptop reported lost"
+```
+
+Optional, plaintext metadata. Treat it like `push --summary`: explain the reason, do not leak the secret.
+
+## The genesis owner can't be revoked
+
+The device that ran the original `keyit init` cannot be revoked through this command. The CLI fails locally with `revoking the genesis owner is not supported`. There is no ownership-transfer flow yet, so do not create the project from a disposable machine.
+
+## Finishing the rotation
+
+Revoking a device marks environments as needing rotation. It does not push a new revision by itself.
+
+```bash
+keyit revoke kvd_... --env production --reason "offboarding"
+keyit push production --summary "rotate after offboarding"
+```
+
+Until that push runs, old revisions remain old revisions. Revocation stops future access; rotating values is still your job when the old values are no longer acceptable.
+
+## Next
+
+<Cards>
+  <Card title="Push & Pull" description="Finish revocation by creating a fresh revision for the remaining devices." href="/docs/push-pull" />
+  <Card title="Team Access overview" description="Return to the whole device-access chain." href="/docs/access" />
+</Cards>

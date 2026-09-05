@@ -1,0 +1,64 @@
+---
+title: Invite
+description: Create a request path for a new device, scoped before it ever joins.
+---
+
+An invite is permission to ask, not permission to read. Keep it scoped, short-lived, and boring.
+
+## keyit invite create
+
+```bash
+keyit invite create --env development --expires-at 1735689600
+```
+
+Requires an owner or admin device. Creates a signed invite record and a `.bundle` file under the local Keyit data directory. If the project has an HTTP relay configured, the invite record is also published there.
+
+```text
+Created invite kvi_...
+  project:      kvp_...
+  environments: 1
+  record:       <data-dir>/.../invites/kvi_....keyit
+  bundle:       <data-dir>/.../invites/kvi_....bundle
+```
+
+<Callout type="warn" title="No --env means the invite grants nothing">
+  `--env` is repeatable, but leaving it off creates an invite with zero allowed environments. A device can join through it and request nothing useful. Approval cannot grant more than the invite allowed. Pass every environment you mean to include, by label or `kve_...` ID.
+</Callout>
+
+## --expires-at
+
+`--expires-at` is required and takes a Unix timestamp, not a duration. It must be in the future or invite creation fails locally.
+
+```bash
+keyit invite create --env development --expires-at "$(date -v+7d +%s)"        # macOS
+keyit invite create --env development --expires-at "$(date -d '+7 days' +%s)"  # Linux
+```
+
+An expired invite is rejected at join time. `keyit join` fails before writing a join request.
+
+## --max-uses
+
+```bash
+keyit invite create --env development --expires-at 1735689600 --max-uses 5
+```
+
+Defaults to `1`. Each successful `keyit join` against the invite counts as one use in the state this checkout can see.
+
+<Callout type="info" title="Local use counting is a courtesy, not a guarantee">
+  Without a relay, Keyit can only count join requests already present in this checkout. Two offline devices can redeem the same bundle without seeing each other. With a hosted or self-hosted relay, the relay is where devices exchange that use-counting state. Do not treat `--max-uses` as a hard offline security boundary.
+</Callout>
+
+## The invite bundle
+
+Every `invite create` writes a `.bundle` file next to the invite record. It is a TOML bootstrap bundle with the project genesis, the invite, and the environment records the invite covers. A new device can run `keyit join <bundle-path>` before it has fetched anything from a relay.
+
+<Callout type="warn" title="A bundle discloses more than the invite">
+  The bundle is not just the invite. It also embeds this checkout's current join-request, approval, and revocation records: device IDs, roles, and environment assignments. None of that is a decryption key, but it is still your roster. Send the bundle to the person joining, not to a public channel.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Join" description="What the new device writes after receiving the invite." href="/docs/access/join" />
+  <Card title="Approve" description="What moves the request from pending to admitted." href="/docs/access/approve" />
+</Cards>

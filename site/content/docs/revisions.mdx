@@ -1,0 +1,49 @@
+---
+title: Revisions
+description: Environment history without turning history into a secret dump.
+---
+
+Every push creates a revision. Revisions give teams a chain to sync against instead of a floating file passed around by habit.
+
+## keyit revision list
+
+```bash
+keyit revision list development
+```
+
+Lists every encrypted revision this device has locally for one environment, oldest to newest. It reads local metadata; it does not decrypt payloads.
+
+```text
+Revisions for development (kve_...) in project kvp_...
+
+Revision kvr_...
+  parent:     none
+  author:     kvd_...
+  created at: 1755878500
+  summary:    Initial development env
+
+Revision kvr_...
+  parent:     kvr_...
+  author:     kvd_...
+  created at: 1755878600
+  summary:    rotate api key
+```
+
+## What's in a revision
+
+Each entry is signed metadata: revision ID, parent revision (`none` for the first one), authoring device, timestamp, and optional summary. The dotenv contents live in a separate encrypted payload. This command does not need to touch it.
+
+<Callout type="warn" title="Summaries are visible metadata">
+  Same rule as `push --summary`: a revision summary is plaintext metadata. Keep it descriptive, not revealing. "rotated api key" is fine. The key is not.
+</Callout>
+
+## Environment scoping
+
+Revision history is per environment, not per project. `development` and `production` have independent chains, and `keyit revision list` always requires an environment label or `kve_...` ID.
+
+## Next
+
+<Cards>
+  <Card title="Status & Diff" description="Compare your local file against the latest revision." href="/docs/status-diff" />
+  <Card title="Push & Pull" description="Create the next revision or materialize the latest one." href="/docs/push-pull" />
+</Cards>

@@ -584,6 +584,9 @@ fn resolve_u32(explicit: Option<u32>, env_name: &str, default_value: u32) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn parses_with_no_arguments() {
@@ -778,6 +781,7 @@ mod tests {
 
     #[test]
     fn runtime_config_uses_flags_before_env() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let previous_root = std::env::var_os("KEYIT_RELAY_ROOT");
         let from_env = std::env::temp_dir().join("keyit-relay-from-env");
         let from_flag = std::env::temp_dir().join("keyit-relay-from-flag");
@@ -802,6 +806,7 @@ mod tests {
 
     #[test]
     fn production_mode_requires_https_public_url() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let root = std::env::temp_dir().join("keyit-relay-production-test");
         let err = RelayRuntimeConfig::resolve(RelayRuntimeInputs {
             mode: Some("production".to_string()),
@@ -820,6 +825,7 @@ mod tests {
 
     #[test]
     fn runtime_config_resolves_limits() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let config = RelayRuntimeConfig::resolve(RelayRuntimeInputs {
             max_body_bytes: Some(2048),
             max_request_payload_bytes: Some(1024),
@@ -850,6 +856,7 @@ mod tests {
 
     #[test]
     fn runtime_config_defaults_new_limits_to_unlimited() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let config = RelayRuntimeConfig::resolve(runtime_inputs(
             Some(std::env::temp_dir().join("keyit-relay-defaults-test")),
             None,
@@ -866,6 +873,7 @@ mod tests {
 
     #[test]
     fn runtime_config_zero_disables_revisions_per_environment_cap() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let config = RelayRuntimeConfig::resolve(RelayRuntimeInputs {
             max_revisions_per_environment: Some(0),
             ..runtime_inputs(
@@ -881,6 +889,7 @@ mod tests {
 
     #[test]
     fn runtime_config_rejects_invalid_hosted_limit_values() {
+        let _env = ENV_LOCK.lock().expect("env lock");
         let previous = std::env::var_os("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE");
         std::env::set_var("KEYIT_RELAY_MAX_PROJECTS_PER_DEVICE", "not-a-number");
         let result = RelayRuntimeConfig::resolve(runtime_inputs(

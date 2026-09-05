@@ -1,0 +1,62 @@
+---
+title: Reference
+description: The flat map for commands, files, relay operation, and source docs.
+---
+
+Everything before this page is task-oriented. This is the flat map: commands, files, relay operation, and source documents. Use it when you already know what you are looking for.
+
+## Commands
+
+```text
+keyit init
+keyit env add / list
+keyit push / pull
+keyit status / diff
+keyit whoami
+keyit revision list
+keyit invite create
+keyit join
+keyit approve
+keyit revoke
+keyit relay check
+keyit completions / version
+
+keyit-relay serve
+keyit-relay maintenance inspect / cleanup
+keyit-relay completions / version
+```
+
+Every command supports `--help` for its full flag list. Day-to-day use lives under [Environments](/docs/environments) and Daily Use. Device lifecycle lives under [Team Access](/docs/access). Relay operation lives under [Relay](/docs/relay).
+
+<Cards>
+  <Card title="keyit CLI" description="The command surface shipped by the repository." href="https://github.com/simplbase/keyit/blob/main/README.md" />
+  <Card title="keyit-relay" description="Serve and maintenance commands for relay operators." href="/docs/relay/self-hosted" />
+</Cards>
+
+## Files and layout
+
+<Cards>
+  <Card title="keyit.toml" description="The committed locator: project ID, genesis hash, relay URL, environment labels." href="/docs/first-project" />
+  <Card title="Local data directory" description="Where device identity, access records, and encrypted revisions live." href="/docs/first-project" />
+</Cards>
+
+## Relay configuration
+
+<Cards>
+  <Card title="Self-hosted relay" description="Root, bind address, public URL, mode, and TLS responsibility." href="/docs/relay/self-hosted" />
+  <Card title="Production relay" description="Environment variables, probes, limits, hardening, and known gaps." href="/docs/relay/production" />
+</Cards>
+
+## Protocol and architecture
+
+<Cards>
+  <Card title="Protocol v1" description="Identity, genesis, keys, access records, revisions, revocation, and relay contract." href="https://github.com/simplbase/keyit/blob/main/docs/protocol/keyit-protocol-v1.md" />
+  <Card title="Architecture" description="Workspace layout, crate boundaries, and dependency direction." href="https://github.com/simplbase/keyit/blob/main/docs/architecture.md" />
+</Cards>
+
+## Project
+
+<Cards>
+  <Card title="Release flow" description="How versions are tagged, built, and published." href="https://github.com/simplbase/keyit/blob/main/docs/release.md" />
+  <Card title="Contributing" description="Workspace setup, required checks, and how to propose a change." href="https://github.com/simplbase/keyit/blob/main/CONTRIBUTING.md" />
+</Cards>

@@ -1,0 +1,79 @@
+---
+title: Push And Pull
+description: "The sync loop: one device seals state, another approved device pulls it."
+---
+
+Push and pull are the whole product in two verbs. Push reads the local dotenv file and creates an encrypted revision. Pull decrypts the latest revision this device is allowed to read and writes the mapped local file.
+
+## The loop
+
+```bash
+keyit push development --summary "rotate api key"
+keyit pull development
+```
+
+Push runs on the machine with the current values. Pull runs on another approved device that needs them. If the device is not approved, there is nothing useful to decrypt.
+
+## What push reads and writes
+
+`keyit push <environment>` reads the mapped file, parses it as dotenv, encrypts the source, and writes a signed revision plus encrypted payload under the local Keyit data directory. It then publishes the encrypted revision to the project's default HTTP relay unless you pass `--relay-dir` or another `--relay-url`.
+
+```text
+Created local encrypted revision kvr_... for development (kve_...)
+  project:  kvp_...
+  keys:     4
+  revision: <data-dir>/.../revisions/kvr_....toml
+  payload:  <data-dir>/.../payloads/kvr_....bin
+```
+
+<Callout type="warn" title="--summary is metadata, not a hiding place">
+  `--summary` is plaintext revision metadata. A relay operator can see it. Approved devices can see it. Write "rotated api key", never the key.
+</Callout>
+
+## What pull writes
+
+`keyit pull <environment>` fetches from the relay when configured, decrypts the latest known revision this device can unwrap, writes it to the mapped local file, and records that revision as the materialized baseline.
+
+```text
+Materialized local revision kvr_... for development (kve_...)
+  project:    kvp_...
+  local path: .env.local
+  keys:       4
+```
+
+Pull refuses to overwrite local changes it does not recognize. Read [Conflicts](/docs/conflicts) before you reach for `--force`.
+
+## Default relay, --relay-dir, and --relay-url
+
+New projects default to the hosted HTTP relay recorded in `keyit.toml`:
+
+```text
+https://relay.keyit.sh
+```
+
+Leave both flags off and push/pull use the project default. Use `--relay-dir` when you want a filesystem-backed relay instead:
+
+```bash
+keyit push development --relay-dir /path/to/shared-dir
+keyit pull development --relay-dir /path/to/shared-dir
+```
+
+`--relay-dir` points at a plain directory and takes precedence over the HTTP relay. It is good for local tests and shared filesystems, not magic. `--relay-url` points at another HTTP(S) relay:
+
+```bash
+keyit push development --relay-url https://relay.example.com
+keyit pull development --relay-url https://relay.example.com
+```
+
+Set a different project default at initialization time with `keyit init --relay-url <url>`. Use an explicit `--relay-url` on push or pull only when you want to override the recorded default for that command.
+
+<Callout type="info" title="Push requires environment access">
+  Push checks that this device is an active, approved member with access to the environment before creating the revision. A device that has not been approved cannot push useful state.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="Status & Diff" description="See what changed before you create another revision." href="/docs/status-diff" />
+  <Card title="Conflicts" description="Know which refusal has --force and which one does not." href="/docs/conflicts" />
+</Cards>

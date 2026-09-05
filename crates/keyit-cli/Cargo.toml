@@ -43,6 +43,5 @@ ureq = "2"
 # Isolated temporary directories for filesystem tests.
 tempfile = "3"
 # Re-declared here with `test-util` enabled so this crate's own tests can
-# use `keyit-protocol`'s `new_unchecked_for_test` placeholder
-# constructors.
+# use `keyit-protocol`'s `new_unchecked_for_test` constructors.
 keyit-protocol = { path = "../keyit-protocol", features = ["test-util"] }

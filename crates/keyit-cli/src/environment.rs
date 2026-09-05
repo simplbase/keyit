@@ -120,7 +120,7 @@ pub fn run_env_add(options: EnvAddOptions) -> Result<EnvAddOutcome, CliError> {
         created_at: now,
         created_by_device_id: device_identity.device_id.clone(),
         parent_project_genesis_hash,
-        signature: zero_signature_placeholder(),
+        signature: zero_signature_field(),
     };
     environment.signature = device_keypair.sign(EnvironmentGenesis::SIGN_LABEL, &environment);
     environment.verify_signature(&device_keypair.public_key())?;
@@ -181,7 +181,7 @@ fn project_genesis_hash(project: &ProjectGenesis) -> HashBytes {
     canonical::canonical_hash(labels::SIGN_PROJECT_GENESIS, project)
 }
 
-fn zero_signature_placeholder() -> SignatureBytes {
+fn zero_signature_field() -> SignatureBytes {
     SignatureBytes::from_bytes(&[0u8; 64]).expect("64 zero bytes is a validly-shaped signature")
 }
 

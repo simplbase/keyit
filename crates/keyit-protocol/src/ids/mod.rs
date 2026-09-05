@@ -110,8 +110,7 @@ fn split_prefix<'a>(
 ///   tuple wrapper)
 /// - `as_str`
 /// - `new_unchecked_for_test`, gated to test builds (or the `test-util`
-///   feature for use from other crates' tests), documented as a
-///   placeholder until real identifier derivation exists
+///   feature for use from other crates' tests)
 macro_rules! typed_id {
     ($(#[$meta:meta])* $name:ident, $namespace:literal, $prefix:literal) => {
         $(#[$meta])*
