@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Put the CLI on PATH. Run the relay only if you choose to own it.
+description: Put the released binaries on PATH. Run the relay only if you choose to own it.
 ---
 
-Keyit is a CLI plus an optional relay binary. There is no account to create before you can initialize a project. Install `keyit`. Install `keyit-relay` too if you plan to run your own damn relay.
+Keyit ships as two binaries: `keyit` for developers and `keyit-relay` for teams who want to run their own relay. There is no account to create before you initialize a project.
 
 ## Homebrew (macOS or Linux)
 
@@ -12,7 +12,13 @@ brew tap simplbase/tap
 brew install keyit
 ```
 
-This installs both `keyit` and `keyit-relay`. You need the relay binary only when you self-host or test the relay locally.
+If you do not want to tap first:
+
+```bash
+brew install simplbase/tap/keyit
+```
+
+Homebrew installs both `keyit` and `keyit-relay`. Most developers only run `keyit`. The relay binary is there for people who would rather own the server than use ours.
 
 ## Ubuntu and other Linux distributions
 
@@ -22,7 +28,7 @@ User-local install:
 curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/install-release.sh | sh
 ```
 
-This installs:
+This downloads the latest GitHub Release, checks it against `SHA256SUMS`, and installs:
 
 ```text
 $HOME/.local/bin/keyit
@@ -55,13 +61,26 @@ curl -fsSL https://raw.githubusercontent.com/simplbase/keyit/main/packaging/inst
   The installer downloads the matching GitHub Release archive, verifies it against `SHA256SUMS`, and installs `keyit` plus `keyit-relay`. It does not edit your shell config and it does not initialize a project.
 </Callout>
 
+## Released targets
+
+The public release artifacts currently cover:
+
+```text
+aarch64-apple-darwin
+x86_64-apple-darwin
+x86_64-unknown-linux-gnu
+x86_64-pc-windows-msvc
+```
+
+That means macOS on Apple Silicon, macOS on Intel, Ubuntu and other glibc-based x86_64 Linux distributions, and Windows. Linux ARM is not published yet.
+
 ## Windows
 
 Download the Windows ZIP from the [GitHub Release page](https://github.com/simplbase/keyit/releases), verify it against `SHA256SUMS`, and put `keyit.exe` somewhere on `PATH`. The archive also includes `keyit-relay.exe`.
 
 ## Install from source
 
-Use this when you are working from a checkout or need a build that has not been released yet:
+Use this when you are working from a checkout:
 
 ```bash
 PREFIX="$HOME/.local" ./packaging/install.sh
