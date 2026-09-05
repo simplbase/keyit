@@ -19,3 +19,6 @@ Thumbs.db
 
 # Local override configuration
 .direnv/
+
+# Private product and business planning
+internal-planning/
