@@ -1,12 +1,17 @@
 # Keyit
 
-Portable private state for software projects.
+Encrypted dotenv sync for approved developer machines.
 
-Keyit is a CLI and relay protocol for synchronizing project environment
-files across approved developer machines. It is designed for dotenv-style
-files such as `.env.local`: one device pushes an encrypted revision,
-another approved device pulls it, and the relay never sees plaintext
-secrets.
+Keyit exists for the local-dev problem nobody wants to admit they have:
+someone needs `.env.local`, so somebody pastes it into Slack, Git,
+Notion, or a "temporary" document that becomes permanent.
+
+Keyit gives that handoff a protocol. One approved device pushes an
+encrypted revision. Another approved device pulls it. The relay stores
+ciphertext and public metadata; it never sees plaintext values or
+unwrapped encryption keys.
+
+Docs: [keyit.sh/docs](https://keyit.sh/docs)
 
 ```text
 Developer A
@@ -27,6 +32,12 @@ Developer B
 Keyit does not require user accounts, OAuth, email verification, VPNs,
 static IPs, or Git hosting access. Identity is device-scoped and
 cryptographic.
+
+Keyit is not a cloud secrets manager, runtime injector, KMS, vault
+replacement, or credential-rotation system. It solves the narrower
+problem of moving project-local private state between approved machines
+without teaching the team to paste secrets into places that were never
+designed to hold them.
 
 ## Relay
 
@@ -52,9 +63,6 @@ encryption keys, hosted or self-hosted.
 - invite, join, approve, and revoke flows
 - local conflict and overwrite protection
 - release binaries and relay container images
-
-Keyit is for developer-machine dotenv state. It is not a cloud secrets
-manager, runtime injector, KMS, or credential-rotation system.
 
 ## Install
 
